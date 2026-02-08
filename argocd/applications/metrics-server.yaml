@@ -6,9 +6,15 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/KristijanJ/ecommerce-shop-gitops.git
-    targetRevision: HEAD
-    path: infra/metrics-server
+    chart: metrics-server
+    repoURL: https://kubernetes-sigs.github.io/metrics-server/
+    targetRevision: 3.13.0
+    helm:
+      releaseName: metrics-server
+      values: |
+        args:
+          - --kubelet-insecure-tls
+          - --kubelet-preferred-address-types=InternalIP
   destination:
     server: https://kubernetes.default.svc
     namespace: kube-system

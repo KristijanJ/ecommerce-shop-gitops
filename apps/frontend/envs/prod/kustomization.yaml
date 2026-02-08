@@ -7,8 +7,8 @@ resources:
 namePrefix: prod-
 nameSuffix: ""
 
-patches:
-  - path: replica-patch.yaml
-    target:
-      kind: HorizontalPodAutoscaler
-      name: ecommerce-fe-hpa
+# patches:
+#   - path: replica-patch.yaml
+#     target:
+#       kind: HorizontalPodAutoscaler
+#       name: ecommerce-fe-hpa
