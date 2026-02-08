@@ -6,3 +6,9 @@ resources:
 
 namePrefix: prod-
 nameSuffix: ""
+
+patches:
+  - path: replica-patch.yaml
+    target:
+      kind: Deployment
+      name: ecommerce-fe
