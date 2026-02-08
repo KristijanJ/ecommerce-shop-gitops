@@ -11,3 +11,4 @@ helmCharts:
       args:
         - --kubelet-insecure-tls # For Kind/local dev
         - --kubelet-preferred-address-types=InternalIP
+        - --enable-helm
