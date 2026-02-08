@@ -1,6 +1,7 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
 metadata:
-  name: ecommerce-fe
+  name: ecommerce-fe-hpa
 spec:
-  replicas: 3
+  minReplicas: 3
+  maxReplicas: 10

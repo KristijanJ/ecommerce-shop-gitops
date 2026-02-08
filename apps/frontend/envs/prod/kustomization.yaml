@@ -10,5 +10,5 @@ nameSuffix: ""
 patches:
   - path: replica-patch.yaml
     target:
-      kind: Deployment
-      name: ecommerce-fe
+      kind: HorizontalPodAutoscaler
+      name: ecommerce-fe-hpa
