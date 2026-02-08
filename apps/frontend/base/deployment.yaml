@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ecommerce-fe
+spec:
+  selector:
+    matchLabels:
+      app: ecommerce-fe
+  template:
+    metadata:
+      labels:
+        app: ecommerce-fe
+    spec:
+      containers:
+        - name: ecommerce-fe
+          image: kristijan92/ecommerce-shop-fe:1.0.0
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "200m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          ports:
+            - containerPort: 80
