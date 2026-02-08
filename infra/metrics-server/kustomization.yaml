@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+helmCharts:
+  - name: metrics-server
+    repo: https://kubernetes-sigs.github.io/metrics-server/
+    version: 3.13.0
+    releaseName: metrics-server
+    namespace: kube-system
+    valuesInline:
+      args:
+        - --kubelet-insecure-tls # For Kind/local dev
+        - --kubelet-preferred-address-types=InternalIP
