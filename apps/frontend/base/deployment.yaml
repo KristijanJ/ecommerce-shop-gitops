@@ -21,5 +21,10 @@ spec:
             limits:
               memory: "256Mi"
               cpu: "500m"
+          env:
+            - name: "BACKEND_URL"
+              value: "prod-ecommerce-be-service.prod-backend.svc.cluster.local"
+            - name: "BACKEND_PORT"
+              value: "80"
           ports:
             - containerPort: 80
