@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ecommerce-be
+spec:
+  selector:
+    matchLabels:
+      app: ecommerce-be
+  template:
+    metadata:
+      labels:
+        app: ecommerce-be
+    spec:
+      containers:
+        - name: ecommerce-be
+          image: kristijan92/ecommerce-shop-be:1.0.0
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "200m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          env:
+            - name: "DATABASE_URL"
+              value: "postgresql://postgres:postgres@host.docker.internal:5432/ecommerce?schema=public"
+          ports:
+            - containerPort: 3000

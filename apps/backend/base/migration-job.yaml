@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ecommerce-be-migrations
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  ttlSecondsAfterFinished: 100
+  template:
+    spec:
+      containers:
+        - name: ecommerce-shop-be-migrations
+          image: kristijan92/ecommerce-shop-be:1.0.0
+          command: ["npx", "prisma", "migrate", "deploy"]
+          env:
+            - name: "DATABASE_URL"
+              value: "postgresql://postgres:postgres@host.docker.internal:5432/ecommerce?schema=public"
+      restartPolicy: Never

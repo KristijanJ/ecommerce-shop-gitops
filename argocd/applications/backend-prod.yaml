@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prod-backend
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/KristijanJ/ecommerce-shop-gitops.git
+    targetRevision: HEAD
+    path: apps/backend/envs/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: prod-backend
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
