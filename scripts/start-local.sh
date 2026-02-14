@@ -84,8 +84,8 @@ echo -e "   ${BLUE}kind load docker-image ecommerce-backend:latest --name $CLUST
 echo -e "   ${BLUE}kind load docker-image ecommerce-frontend:latest --name $CLUSTER_NAME${NC}\n"
 
 echo -e "${CYAN}3. After loading images, deploy your applications:${NC}"
-echo -e "   ${BLUE}kubectl apply -f argocd/applications/backend-prod.yaml${NC}"
-echo -e "   ${BLUE}kubectl apply -f argocd/applications/frontend-prod.yaml${NC}\n"
+echo -e "   ${BLUE}kubectl apply -n argocd -f argocd/applications/backend-prod.yaml${NC}"
+echo -e "   ${BLUE}kubectl apply -n argocd -f argocd/applications/frontend-prod.yaml${NC}\n"
 
 echo -e "${BOLD}${CYAN}Useful commands:${NC}"
 echo -e "  • View ArgoCD password:"
