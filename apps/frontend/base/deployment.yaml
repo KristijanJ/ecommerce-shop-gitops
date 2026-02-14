@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
         - name: ecommerce-fe
-          image: kristijan92/ecommerce-shop-fe:1.0.2
+          image: kristijan92/ecommerce-shop-fe:1.1.0
           resources:
             requests:
               memory: "128Mi"
@@ -22,9 +22,9 @@ spec:
               memory: "256Mi"
               cpu: "500m"
           env:
-            - name: "VITE_BACKEND_URL"
-              value: "prod-ecommerce-be-service.prod-backend.svc.cluster.local"
-            - name: "VITE_BACKEND_PORT"
-              value: "80"
+            - name: "API_URL"
+              value: "https://fakestoreapi.com"
+            - name: "API_PORT"
+              value: "443"
           ports:
-            - containerPort: 80
+            - containerPort: 3000
