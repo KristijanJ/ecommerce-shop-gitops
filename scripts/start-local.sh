@@ -19,8 +19,10 @@ echo -e "${BOLD}${CYAN}========================================${NC}"
 echo -e "${BOLD}${CYAN}  Starting Local E-commerce Environment${NC}"
 echo -e "${BOLD}${CYAN}========================================${NC}\n"
 
+# ------------------------------------------
 # Step 1: Create Kind cluster
-echo -e "${BOLD}${BLUE}[1/3] Creating Kind Cluster...${NC}"
+# ------------------------------------------
+echo -e "${BOLD}${BLUE}[1/4] Creating Kind Cluster...${NC}"
 "$SCRIPT_DIR/kind-cluster.sh" create
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to create kind cluster${NC}"
@@ -32,8 +34,10 @@ echo ""
 echo -e "${CYAN}Waiting for cluster to be ready...${NC}"
 sleep 5
 
+# ------------------------------------------
 # Step 2: Install ArgoCD
-echo -e "${BOLD}${BLUE}[2/3] Installing ArgoCD...${NC}"
+# ------------------------------------------
+echo -e "${BOLD}${BLUE}[2/4] Installing ArgoCD...${NC}"
 "$SCRIPT_DIR/install-argo-cd.sh" kind
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to install ArgoCD${NC}"
@@ -49,8 +53,10 @@ if [ $? -ne 0 ]; then
 fi
 echo ""
 
+# ------------------------------------------
 # Step 3: Install metrics-server
-echo -e "${BOLD}${BLUE}[3/3] Installing Metrics Server...${NC}"
+# ------------------------------------------
+echo -e "${BOLD}${BLUE}[3/4] Installing Metrics Server...${NC}"
 kubectl apply -f "$SCRIPT_DIR/../argocd/applications/metrics-server.yaml"
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to apply metrics-server application${NC}"
@@ -68,7 +74,30 @@ else
     echo -e "${YELLOW}Metrics server is still starting (this is normal)${NC}\n"
 fi
 
+# ------------------------------------------
+# Step 4: Install kube-prometheus-stack
+# ------------------------------------------
+echo -e "${BOLD}${BLUE}[4/4] Installing Kube Prometheus Stack...${NC}"
+kubectl apply -f "$SCRIPT_DIR/../argocd/applications/prometheus-grafana.yaml"
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Failed to apply prometheus-grafana application${NC}"
+    exit 1
+fi
+
+echo -e "${CYAN}Waiting for kube-prometheus-stack to sync...${NC}"
+sleep 20
+
+# Wait for kube-prometheus-stack to be ready
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=kube-prometheus-stack -n monitoring --timeout=180s 2>/dev/null
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}Kube Prometheus stack is ready!${NC}\n"
+else
+    echo -e "${YELLOW}Kube Prometheus stack is still starting (this is normal)${NC}\n"
+fi
+
+# ------------------------------------------
 # Final instructions
+# ------------------------------------------
 echo -e "${BOLD}${GREEN}========================================${NC}"
 echo -e "${BOLD}${GREEN}  Initial Setup Complete!${NC}"
 echo -e "${BOLD}${GREEN}========================================${NC}\n"
