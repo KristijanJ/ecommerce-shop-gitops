@@ -1,34 +1,78 @@
-# E-Commerce Shop GitOps
+# ecommerce-shop-gitops
 
-## Local development
+GitOps config for the ecommerce shop. Supports local development with Kind and is built to extend to EKS.
 
-Create a kind cluster using `./scripts/kind-cluster.sh create`.
+## Stack
 
-Install ArgoCD using `./scripts/install-argo-cd.sh kind`.  
-Add ssh key if repo is private using `argocd repo add git@github.com:argoproj/argocd-example-apps.git --ssh-private-key-path ~/.ssh/id_rsa`.
+- **ArgoCD** — GitOps continuous delivery
+- **Kustomize** — environment overlays
+- **kube-prometheus-stack** — Prometheus, Grafana, Alertmanager
+- **metrics-server** — HPA support
 
-### ArgoCD initial pass
+## Local development (Kind)
 
-kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
+Check you have everything installed:
 
-### Docker images
+```bash
+make check-requirements
+```
 
-For Kind clusters, you have to load images using e.g. `kind load docker-image kristijan92/ecommerce-shop-fe:1.0.0 --name ecommerce-shop-cluster`
+Spin up the full environment (cluster + ArgoCD + monitoring):
 
-## Monitoring Access Commands (After Deployment)
+```bash
+make start
+```
 
-### Grafana
+Kind doesn't pull from registries, so load images manually:
 
-kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80
-Access at: http://localhost:3000
-Credentials: admin / admin
+```bash
+make load-backend-image           # default tag from Makefile
+make load-frontend-image          # override with FE_TAG=x.x.x
+```
 
-### Prometheus
+Deploy the applications:
 
-kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:9090
-Access at: http://localhost:9090
+```bash
+make deploy-all
+```
 
-### Alertmanager
+### ArgoCD
 
-kubectl port-forward -n monitoring svc/kube-prometheus-stack-alertmanager 9093:9093
-Access at: http://localhost:9093
+```bash
+make argocd-password              # initial admin password
+make argocd-ui                    # https://localhost:8080
+```
+
+If the repo is private, add your SSH key:
+
+```bash
+argocd repo add git@github.com:your-org/your-repo.git --ssh-private-key-path ~/.ssh/id_rsa
+```
+
+## Monitoring
+
+```bash
+make grafana-ui                   # http://localhost:3000  (admin / admin)
+make prometheus-ui                # http://localhost:9090
+make alertmanager-ui              # http://localhost:9093
+```
+
+## Useful commands
+
+```bash
+make pods                         # all pods across namespaces
+make logs-backend
+make logs-frontend
+make hpa
+make argocd-status
+make events                       # recent warning events
+```
+
+## Teardown
+
+```bash
+make clean                        # remove ArgoCD applications
+make nuke                         # delete the entire cluster
+```
+
+Run `make help` to see all available commands.
