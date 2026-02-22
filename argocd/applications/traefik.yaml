@@ -16,6 +16,14 @@ spec:
         deployment:
           kind: DaemonSet
 
+        # hostPort pods can't run two instances on the same node simultaneously.
+        # maxUnavailable: 1 ensures the old pod is deleted before the new one starts.
+        updateStrategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 1
+            maxSurge: 0
+
         tolerations:
           - key: node-role.kubernetes.io/control-plane
             operator: Exists
@@ -31,10 +39,16 @@ spec:
           websecure:
             hostPort: 443
 
+        # cloud-provider-kind sets ipMode: Proxy on the LB service, which
+        # Traefik doesn't copy to Ingress status. Hardcode 127.0.0.1 instead
+        # since hostPort maps all traffic to localhost in KinD.
         providers:
-          kubernetesingress:
+          kubernetesIngress:
             publishedService:
-              enabled: true
+              enabled: false
+
+        additionalArguments:
+          - "--providers.kubernetesingress.ingressendpoint.ip=127.0.0.1"
 
         ingressRoute:
           dashboard:
