@@ -43,6 +43,12 @@ start: ## Start the full local environment (cluster + ArgoCD + monitoring)
 	@./scripts/start-local.sh
 	@echo "$(GREEN)$(CHECK) Local environment ready$(NC)"
 
+.PHONY: lb
+lb: ## Start cloud-provider-kind for LoadBalancer support (run in a separate terminal, requires sudo)
+	@echo "$(YELLOW)$(WARN)  Run this in a dedicated terminal — it stays in the foreground$(NC)"
+	@echo "$(CYAN)Docs: https://kind.sigs.k8s.io/docs/user/loadbalancer/$(NC)"
+	@sudo $(HOME)/go/bin/cloud-provider-kind
+
 .PHONY: cluster-create
 cluster-create: ## Create the Kind cluster
 	@echo "$(CYAN)Creating Kind cluster '$(CLUSTER_NAME)'...$(NC)"

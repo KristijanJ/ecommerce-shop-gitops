@@ -68,6 +68,17 @@ check_command kubectl   "kubectl"  "https://kubernetes.io/docs/tasks/tools/"
 check_command argocd    "ArgoCD CLI" "https://argo-cd.readthedocs.io/en/stable/cli_installation/ (optional but useful)"
 check_command k9s       "k9s" "https://k9scli.io/ (optional but useful)"
 
+# cloud-provider-kind: needed for LoadBalancer services in KinD
+# See: https://kind.sigs.k8s.io/docs/user/loadbalancer/
+# Install: go install sigs.k8s.io/cloud-provider-kind@latest
+echo ""
+echo -e "${BOLD}LoadBalancer support:${NC}"
+if command -v cloud-provider-kind &>/dev/null || [ -f "$HOME/go/bin/cloud-provider-kind" ]; then
+    pass "cloud-provider-kind found  =>  run 'make lb' in a separate terminal before deploying apps"
+else
+    warn "cloud-provider-kind not found — LoadBalancer services will stay <pending> without it"$'\n'"         Install: go install sigs.k8s.io/cloud-provider-kind@latest"$'\n'"         Docs: https://kind.sigs.k8s.io/docs/user/loadbalancer/"
+fi
+
 echo ""
 
 # --- Docker daemon ------------------------------------------------------------
