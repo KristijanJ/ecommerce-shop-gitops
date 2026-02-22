@@ -121,6 +121,15 @@ vault-ui: ## Port-forward Vault UI to localhost:8200 (token: root)
 	@kubectl port-forward svc/vault -n vault 8200:8200
 
 # ------------------------------------------------------------------------------
+### Traefik commands:
+# ------------------------------------------------------------------------------
+
+.PHONY: traefik-ui
+traefik-ui: ## Port-forward Traefik dashboard to localhost:9000
+	@echo "$(CYAN)Traefik dashboard → http://localhost:9000/dashboard/$(NC)"
+	@kubectl port-forward svc/traefik-ingress-controller -n traefik 9000:9000
+
+# ------------------------------------------------------------------------------
 ### Application deployment commands:
 # ------------------------------------------------------------------------------
 

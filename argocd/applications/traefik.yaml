@@ -1,0 +1,55 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: traefik-ingress-controller
+  namespace: argocd
+spec:
+  project: default
+  source:
+    chart: traefik
+    repoURL: https://traefik.github.io/charts
+    targetRevision: 35.2.0
+    helm:
+      releaseName: traefik-ingress-controller
+      values: |
+        # Run as DaemonSet on the control-plane node where ports 80/443 are mapped
+        deployment:
+          kind: DaemonSet
+
+        tolerations:
+          - key: node-role.kubernetes.io/control-plane
+            operator: Exists
+            effect: NoSchedule
+
+        nodeSelector:
+          node-role.kubernetes.io/control-plane: ""
+
+        # Bind directly to the node ports mapped in kind/cluster.yaml
+        ports:
+          web:
+            hostPort: 80
+          websecure:
+            hostPort: 443
+
+        ingressRoute:
+          dashboard:
+            enabled: true
+
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 300m
+            memory: 256Mi
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: traefik
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
