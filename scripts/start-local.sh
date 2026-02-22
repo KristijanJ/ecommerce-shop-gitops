@@ -22,7 +22,7 @@ echo -e "${BOLD}${CYAN}========================================${NC}\n"
 # ------------------------------------------
 # Step 1: Create Kind cluster
 # ------------------------------------------
-echo -e "${BOLD}${BLUE}[1/6] Creating Kind Cluster...${NC}"
+echo -e "${BOLD}${BLUE}[1/7] Creating Kind Cluster...${NC}"
 "$SCRIPT_DIR/kind-cluster.sh" create
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to create kind cluster${NC}"
@@ -37,7 +37,7 @@ sleep 5
 # ------------------------------------------
 # Step 2: Install ArgoCD
 # ------------------------------------------
-echo -e "${BOLD}${BLUE}[2/6] Installing ArgoCD...${NC}"
+echo -e "${BOLD}${BLUE}[2/7] Installing ArgoCD...${NC}"
 "$SCRIPT_DIR/install-argo-cd.sh" kind
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to install ArgoCD${NC}"
@@ -56,7 +56,7 @@ echo ""
 # ------------------------------------------
 # Step 3: Install metrics-server
 # ------------------------------------------
-echo -e "${BOLD}${BLUE}[3/6] Installing Metrics Server...${NC}"
+echo -e "${BOLD}${BLUE}[3/7] Installing Metrics Server...${NC}"
 kubectl apply -f "$SCRIPT_DIR/../argocd/applications/metrics-server.yaml"
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to apply metrics-server application${NC}"
@@ -77,7 +77,7 @@ fi
 # ------------------------------------------
 # Step 4: Install kube-prometheus-stack
 # ------------------------------------------
-echo -e "${BOLD}${BLUE}[4/6] Installing Kube Prometheus Stack...${NC}"
+echo -e "${BOLD}${BLUE}[4/7] Installing Kube Prometheus Stack...${NC}"
 kubectl apply -f "$SCRIPT_DIR/../argocd/applications/prometheus-grafana.yaml"
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to apply prometheus-grafana application${NC}"
@@ -98,7 +98,7 @@ fi
 # ------------------------------------------
 # Step 5: Install HashiCorp Vault
 # ------------------------------------------
-echo -e "${BOLD}${BLUE}[5/6] Installing HashiCorp Vault...${NC}"
+echo -e "${BOLD}${BLUE}[5/7] Installing HashiCorp Vault...${NC}"
 kubectl apply -f "$SCRIPT_DIR/../argocd/applications/hashicorp-vault.yaml"
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to apply hashicorp-vault application${NC}"
@@ -119,7 +119,7 @@ fi
 # ------------------------------------------
 # Step 6: Install External Secrets
 # ------------------------------------------
-echo -e "${BOLD}${BLUE}[6/6] Installing External Secrets...${NC}"
+echo -e "${BOLD}${BLUE}[6/7] Installing External Secrets...${NC}"
 kubectl apply -f "$SCRIPT_DIR/../argocd/applications/external-secrets.yaml"
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to apply external-secrets application${NC}"
@@ -136,6 +136,20 @@ if [ $? -eq 0 ]; then
 else
     echo -e "${YELLOW}External Secrets is still starting (this is normal)${NC}\n"
 fi
+
+# ------------------------------------------
+# Step 7: Create Vault token secret for ESO
+# ------------------------------------------
+echo -e "${BOLD}${BLUE}[7/7] Creating Vault token secret for External Secrets...${NC}"
+kubectl create secret generic vault-token \
+    --from-literal=token=root \
+    -n external-secrets \
+    --dry-run=client -o yaml | kubectl apply -f -
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Failed to create vault-token secret${NC}"
+    exit 1
+fi
+echo -e "${GREEN}Vault token secret created!${NC}\n"
 
 # ------------------------------------------
 # Final instructions

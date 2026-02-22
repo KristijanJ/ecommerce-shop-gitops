@@ -6,3 +6,5 @@ resources:
   - service.yaml
   - hpa.yaml
   - migration-job.yaml
+  - secret-store.yaml
+  - secret.yaml

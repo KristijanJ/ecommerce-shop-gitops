@@ -15,5 +15,8 @@ spec:
           command: ["npx", "prisma", "migrate", "deploy"]
           env:
             - name: "DATABASE_URL"
-              value: "postgresql://postgres:postgres@host.docker.internal:5432/ecommerce?schema=public"
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: db-host
       restartPolicy: Never
