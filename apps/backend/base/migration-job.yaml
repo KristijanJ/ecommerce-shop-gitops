@@ -3,7 +3,7 @@ kind: Job
 metadata:
   name: ecommerce-be-migrations
   annotations:
-    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/sync-wave: "-1"
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   ttlSecondsAfterFinished: 100
