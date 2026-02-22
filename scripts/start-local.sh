@@ -22,7 +22,7 @@ echo -e "${BOLD}${CYAN}========================================${NC}\n"
 # ------------------------------------------
 # Step 1: Create Kind cluster
 # ------------------------------------------
-echo -e "${BOLD}${BLUE}[1/8] Creating Kind Cluster...${NC}"
+echo -e "${BOLD}${BLUE}[1/9] Creating Kind Cluster...${NC}"
 "$SCRIPT_DIR/kind-cluster.sh" create
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to create kind cluster${NC}"
@@ -37,7 +37,7 @@ sleep 5
 # ------------------------------------------
 # Step 2: Install ArgoCD
 # ------------------------------------------
-echo -e "${BOLD}${BLUE}[2/8] Installing ArgoCD...${NC}"
+echo -e "${BOLD}${BLUE}[2/9] Installing ArgoCD...${NC}"
 "$SCRIPT_DIR/install-argo-cd.sh" kind
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to install ArgoCD${NC}"
@@ -56,7 +56,7 @@ echo ""
 # ------------------------------------------
 # Step 3: Install metrics-server
 # ------------------------------------------
-echo -e "${BOLD}${BLUE}[3/8] Installing Metrics Server...${NC}"
+echo -e "${BOLD}${BLUE}[3/9] Installing Metrics Server...${NC}"
 kubectl apply -f "$SCRIPT_DIR/../argocd/applications/metrics-server.yaml"
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to apply metrics-server application${NC}"
@@ -77,7 +77,7 @@ fi
 # ------------------------------------------
 # Step 4: Install kube-prometheus-stack
 # ------------------------------------------
-echo -e "${BOLD}${BLUE}[4/8] Installing Kube Prometheus Stack...${NC}"
+echo -e "${BOLD}${BLUE}[4/9] Installing Kube Prometheus Stack...${NC}"
 kubectl apply -f "$SCRIPT_DIR/../argocd/applications/prometheus-grafana.yaml"
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to apply prometheus-grafana application${NC}"
@@ -98,7 +98,7 @@ fi
 # ------------------------------------------
 # Step 5: Install HashiCorp Vault
 # ------------------------------------------
-echo -e "${BOLD}${BLUE}[5/8] Installing HashiCorp Vault...${NC}"
+echo -e "${BOLD}${BLUE}[5/9] Installing HashiCorp Vault...${NC}"
 kubectl apply -f "$SCRIPT_DIR/../argocd/applications/hashicorp-vault.yaml"
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to apply hashicorp-vault application${NC}"
@@ -119,7 +119,7 @@ fi
 # ------------------------------------------
 # Step 6: Install External Secrets
 # ------------------------------------------
-echo -e "${BOLD}${BLUE}[6/8] Installing External Secrets...${NC}"
+echo -e "${BOLD}${BLUE}[6/9] Installing External Secrets...${NC}"
 kubectl apply -f "$SCRIPT_DIR/../argocd/applications/external-secrets.yaml"
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to apply external-secrets application${NC}"
@@ -140,7 +140,7 @@ fi
 # ------------------------------------------
 # Step 7: Create Vault token secret for ESO
 # ------------------------------------------
-echo -e "${BOLD}${BLUE}[7/8] Creating Vault token secret for External Secrets...${NC}"
+echo -e "${BOLD}${BLUE}[7/9] Creating Vault token secret for External Secrets...${NC}"
 kubectl create secret generic vault-token \
     --from-literal=token=root \
     -n external-secrets \
@@ -152,9 +152,31 @@ fi
 echo -e "${GREEN}Vault token secret created!${NC}\n"
 
 # ------------------------------------------
-# Step 8: Install Vault Secret Store
+# Step 8: Seed Vault with DB credentials
 # ------------------------------------------
-echo -e "${BOLD}${BLUE}[8/8] Installing Vault Secret Store...${NC}"
+echo -e "${BOLD}${BLUE}[8/9] Seeding Vault with DB credentials...${NC}"
+echo -e "${CYAN}Waiting for Vault pod to be ready...${NC}"
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=vault -n vault --timeout=120s
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Vault pod is not ready, cannot seed secrets${NC}"
+    exit 1
+fi
+
+kubectl exec -n vault vault-0 -- vault kv put secret/db \
+    db-name=ecommerce \
+    db-user=postgres \
+    db-pass=postgres \
+    db-host="postgresql://postgres:postgres@host.docker.internal:5432/ecommerce?schema=public"
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Failed to seed Vault with DB credentials${NC}"
+    exit 1
+fi
+echo -e "${GREEN}Vault DB credentials seeded!${NC}\n"
+
+# ------------------------------------------
+# Step 9: Install Vault Secret Store
+# ------------------------------------------
+echo -e "${BOLD}${BLUE}[9/9] Installing Vault Secret Store...${NC}"
 kubectl apply -f "$SCRIPT_DIR/../argocd/applications/vault-secret-store.yaml"
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to apply vault-secret-store application${NC}"
