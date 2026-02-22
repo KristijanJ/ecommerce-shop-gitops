@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
         - name: ecommerce-be
-          image: kristijan92/ecommerce-shop-be:1.1.0
+          image: kristijan92/ecommerce-shop-be:1.1.1
           resources:
             requests:
               memory: "128Mi"
@@ -44,3 +44,15 @@ spec:
                   key: db-host
           ports:
             - containerPort: 3000
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
