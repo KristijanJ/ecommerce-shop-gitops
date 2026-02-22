@@ -6,7 +6,7 @@ resources:
   - service.yaml
   - hpa.yaml
   - migration-job.yaml
-  - db-secret.yaml
-  - jwt-secret.yaml
+  - secret-db.yaml
+  - secret-jwt.yaml
   - pdb.yaml
   - ingress.yaml
