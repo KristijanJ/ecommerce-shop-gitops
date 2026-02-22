@@ -39,16 +39,10 @@ spec:
           websecure:
             hostPort: 443
 
-        # cloud-provider-kind sets ipMode: Proxy on the LB service, which
-        # Traefik doesn't copy to Ingress status. Hardcode 127.0.0.1 instead
-        # since hostPort maps all traffic to localhost in KinD.
-        providers:
-          kubernetesIngress:
-            publishedService:
-              enabled: false
-
-        additionalArguments:
-          - "--providers.kubernetesingress.ingressendpoint.ip=127.0.0.1"
+        # Name the IngressClass "traefik" so Ingress resources with
+        # ingressClassName: traefik are picked up correctly.
+        ingressClass:
+          name: traefik
 
         ingressRoute:
           dashboard:
