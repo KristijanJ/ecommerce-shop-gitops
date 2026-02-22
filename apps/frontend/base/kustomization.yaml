@@ -6,4 +6,5 @@ resources:
   - service.yaml
   - hpa.yaml
   - pdb.yaml
+  - secret-jwt.yaml
   - ingress.yaml

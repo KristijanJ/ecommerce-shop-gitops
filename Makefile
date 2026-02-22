@@ -108,7 +108,7 @@ argocd-status: ## Show ArgoCD application sync status
 # ------------------------------------------------------------------------------
 
 .PHONY: vault-seed
-vault-seed: ## Seed Vault with DB credentials (run after cluster start)
+vault-seed: ## Seed Vault with all secrets (DB credentials + JWT secret)
 	@echo "$(CYAN)Seeding Vault with DB credentials...$(NC)"
 	@kubectl exec -n vault vault-0 -- vault kv put secret/db \
 		db-name=ecommerce \
@@ -116,10 +116,15 @@ vault-seed: ## Seed Vault with DB credentials (run after cluster start)
 		db-pass=postgres \
 		db-host="postgresql://postgres:postgres@host.docker.internal:5432/ecommerce?schema=public"
 	@echo "$(GREEN)$(CHECK) Vault DB credentials seeded$(NC)"
+	@echo "$(CYAN)Seeding Vault with JWT secret...$(NC)"
+	@kubectl exec -n vault vault-0 -- vault kv put secret/jwt \
+		jwt-secret="my-super-secret-key"
+	@echo "$(GREEN)$(CHECK) Vault JWT secret seeded$(NC)"
 
 .PHONY: vault-get
 vault-get: ## Read current DB credentials from Vault
 	@kubectl exec -n vault vault-0 -- vault kv get secret/db
+	@kubectl exec -n vault vault-0 -- vault kv get secret/jwt
 
 .PHONY: vault-ui
 vault-ui: ## Port-forward Vault UI to localhost:8200 (token: root)

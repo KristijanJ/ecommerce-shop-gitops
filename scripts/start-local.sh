@@ -173,9 +173,9 @@ fi
 echo -e "${GREEN}Vault token secret created!${NC}\n"
 
 # ------------------------------------------
-# Step 8: Seed Vault with DB credentials
+# Step 8: Seed Vault
 # ------------------------------------------
-echo -e "${BOLD}${BLUE}[9/10] Seeding Vault with DB credentials...${NC}"
+echo -e "${BOLD}${BLUE}[9/10] Seeding Vault data...${NC}"
 echo -e "${CYAN}Waiting for Vault pod to be ready...${NC}"
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=vault -n vault --timeout=120s
 if [ $? -ne 0 ]; then
@@ -183,6 +183,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+echo -e "${BOLD}${BLUE}Seeding Vault with DB credentials...${NC}"
 kubectl exec -n vault vault-0 -- vault kv put secret/db \
     db-name=ecommerce \
     db-user=postgres \
@@ -193,6 +194,15 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 echo -e "${GREEN}Vault DB credentials seeded!${NC}\n"
+
+echo -e "${BOLD}${BLUE}Seeding Vault with JWT secret...${NC}"
+kubectl exec -n vault vault-0 -- vault kv put secret/jwt \
+    jwt-secret="my-super-secret-key"
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Failed to seed Vault with JWT secret${NC}"
+    exit 1
+fi
+echo -e "${GREEN}Vault JWT secret seeded!${NC}\n"
 
 # ------------------------------------------
 # Step 9: Install Vault Secret Store

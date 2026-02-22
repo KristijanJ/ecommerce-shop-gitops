@@ -26,6 +26,11 @@ spec:
               value: "http://ecommerce-be-service"
             - name: "API_PORT"
               value: "80"
+            - name: "JWT_SECRET"
+              valueFrom:
+                secretKeyRef:
+                  name: jwt-secret
+                  key: jwt-secret
           ports:
             - containerPort: 3000
           livenessProbe:
