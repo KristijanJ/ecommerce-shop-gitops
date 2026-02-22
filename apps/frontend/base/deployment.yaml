@@ -23,7 +23,7 @@ spec:
               cpu: "500m"
           env:
             - name: "API_URL"
-              value: "http://prod-ecommerce-be-service.prod-backend.svc.cluster.local"
+              value: "http://ecommerce-be-service"
             - name: "API_PORT"
               value: "80"
           ports:

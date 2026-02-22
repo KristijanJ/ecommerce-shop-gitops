@@ -1,0 +1,12 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ecommerce-fe
+spec:
+  template:
+    spec:
+      containers:
+        - name: ecommerce-fe
+          env:
+            - name: "API_URL"
+              value: "http://prod-ecommerce-be-service.prod-backend.svc.cluster.local"
