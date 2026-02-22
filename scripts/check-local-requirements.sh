@@ -45,7 +45,7 @@ check_command() {
             || "$cmd" version 2>/dev/null \
             || "$cmd" --version 2>/dev/null \
             | head -1)
-        pass "$label  $(echo "$version" | head -1)"
+        pass "$label  =>  $(echo "$version" | head -1)"
     else
         fail "$label not found${hint:+ — $hint}"
     fi
@@ -66,6 +66,7 @@ check_command docker    "Docker"   "https://docs.docker.com/get-docker/"
 check_command kind      "Kind"     "https://kind.sigs.k8s.io/docs/user/quick-start/#installation"
 check_command kubectl   "kubectl"  "https://kubernetes.io/docs/tasks/tools/"
 check_command argocd    "ArgoCD CLI" "https://argo-cd.readthedocs.io/en/stable/cli_installation/ (optional but useful)"
+check_command k9s       "k9s" "https://k9scli.io/ (optional but useful)"
 
 echo ""
 
