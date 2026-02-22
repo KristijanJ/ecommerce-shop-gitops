@@ -7,3 +7,4 @@ resources:
   - hpa.yaml
   - migration-job.yaml
   - secret.yaml
+  - pdb.yaml
