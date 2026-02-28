@@ -37,3 +37,10 @@ backend:
 # Disable MinIO — using filesystem storage locally
 minio:
   enabled: false
+
+# Disable memcached caches — not needed locally
+chunksCache:
+  enabled: false
+
+resultsCache:
+  enabled: false
