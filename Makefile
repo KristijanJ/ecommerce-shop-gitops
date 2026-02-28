@@ -132,34 +132,6 @@ vault-ui: ## Port-forward Vault UI to localhost:8200 (token: root)
 	@kubectl port-forward svc/vault -n vault 8200:8200
 
 # ------------------------------------------------------------------------------
-### Traefik commands:
-# ------------------------------------------------------------------------------
-
-.PHONY: traefik-ui
-traefik-ui: ## Port-forward Traefik dashboard to localhost:9000
-	@echo "$(CYAN)Traefik dashboard → http://localhost:9000/dashboard/$(NC)"
-	@kubectl port-forward svc/traefik-ingress-controller -n traefik 9000:9000
-
-# ------------------------------------------------------------------------------
-### Application deployment commands:
-# ------------------------------------------------------------------------------
-
-.PHONY: deploy-backend
-deploy-backend: ## Deploy the backend ArgoCD application
-	@echo "$(CYAN)Deploying backend...$(NC)"
-	@kubectl apply -n $(ARGOCD_NS) -f argocd/applications/backend-prod.yaml
-	@echo "$(GREEN)$(CHECK) Backend application applied$(NC)"
-
-.PHONY: deploy-frontend
-deploy-frontend: ## Deploy the frontend ArgoCD application
-	@echo "$(CYAN)Deploying frontend...$(NC)"
-	@kubectl apply -n $(ARGOCD_NS) -f argocd/applications/frontend-prod.yaml
-	@echo "$(GREEN)$(CHECK) Frontend application applied$(NC)"
-
-.PHONY: deploy-all
-deploy-all: deploy-backend deploy-frontend ## Deploy both backend and frontend applications
-
-# ------------------------------------------------------------------------------
 ### Monitoring commands:
 # ------------------------------------------------------------------------------
 
@@ -188,11 +160,11 @@ pods: ## Show all pods across all namespaces
 
 .PHONY: logs-backend
 logs-backend: ## Tail logs from the backend pods
-	@kubectl logs -n prod-backend -l app=ecommerce-be --tail=100 -f
+	@kubectl logs -n local-backend -l app=ecommerce-be --tail=100 -f
 
 .PHONY: logs-frontend
 logs-frontend: ## Tail logs from the frontend pods
-	@kubectl logs -n prod-frontend -l app=ecommerce-fe --tail=100 -f
+	@kubectl logs -n local-frontend -l app=ecommerce-fe --tail=100 -f
 
 .PHONY: hpa
 hpa: ## Show HPA status for all namespaces
@@ -206,20 +178,12 @@ events: ## Show recent warning events across all namespaces
 ### Cleanup commands:
 # ------------------------------------------------------------------------------
 
-.PHONY: delete-backend
-delete-backend: ## Remove the backend ArgoCD application
-	@echo "$(RED)Removing backend application...$(NC)"
-	@kubectl delete -n $(ARGOCD_NS) -f argocd/applications/backend-prod.yaml
-	@echo "$(GREEN)$(CHECK) Backend application removed$(NC)"
-
-.PHONY: delete-frontend
-delete-frontend: ## Remove the frontend ArgoCD application
-	@echo "$(RED)Removing frontend application...$(NC)"
-	@kubectl delete -n $(ARGOCD_NS) -f argocd/applications/frontend-prod.yaml
-	@echo "$(GREEN)$(CHECK) Frontend application removed$(NC)"
-
 .PHONY: clean
-clean: delete-backend delete-frontend ## Remove all ArgoCD applications
+clean: ## Remove all ArgoCD applications and platform
+	@echo "$(RED)Removing ArgoCD applications...$(NC)"
+	@kubectl delete -n $(ARGOCD_NS) -f argocd/bootstrap/02-root-apps.yaml --ignore-not-found
+	@kubectl delete -n $(ARGOCD_NS) -f argocd/bootstrap/01-root-platform.yaml --ignore-not-found
+	@echo "$(GREEN)$(CHECK) Applications and platform removed$(NC)"
 
 .PHONY: nuke
 nuke: cluster-delete ## Destroy the entire local cluster (irreversible)

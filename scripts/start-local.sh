@@ -14,10 +14,22 @@ NC='\033[0m' # No Color
 
 # Cluster name
 CLUSTER_NAME="ecommerce-shop-cluster"
+BE_IMAGE="kristijan92/ecommerce-shop-be"
+FE_IMAGE="kristijan92/ecommerce-shop-fe"
 
 echo -e "${BOLD}${CYAN}========================================${NC}"
 echo -e "${BOLD}${CYAN}  Starting Local E-commerce Environment${NC}"
 echo -e "${BOLD}${CYAN}========================================${NC}\n"
+
+# ------------------------------------------
+# Prompt for image tags
+# ------------------------------------------
+read -p "$(echo -e "${CYAN}Backend image tag [1.1.1]: ${NC}")" BE_TAG
+BE_TAG="${BE_TAG:-1.1.1}"
+
+read -p "$(echo -e "${CYAN}Frontend image tag [1.1.3]: ${NC}")" FE_TAG
+FE_TAG="${FE_TAG:-1.1.3}"
+echo ""
 
 # ------------------------------------------
 # Step 1: Create Kind cluster
@@ -125,9 +137,26 @@ fi
 echo -e "${GREEN}Vault JWT secret seeded!${NC}\n"
 
 # ------------------------------------------
-# Step 5: Deploy Applications
+# Step 5: Load Images
 # ------------------------------------------
-echo -e "${BOLD}${BLUE}[5/5] Deploying Applications...${NC}"
+echo -e "${BOLD}${BLUE}[5/6] Loading images into Kind...${NC}"
+make -C "$SCRIPT_DIR/.." load-backend-image BE_TAG="$BE_TAG"
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Failed to load backend image${NC}"
+    exit 1
+fi
+
+make -C "$SCRIPT_DIR/.." load-frontend-image FE_TAG="$FE_TAG"
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Failed to load frontend image${NC}"
+    exit 1
+fi
+echo ""
+
+# ------------------------------------------
+# Step 6: Deploy Applications
+# ------------------------------------------
+echo -e "${BOLD}${BLUE}[6/6] Deploying Applications...${NC}"
 kubectl apply -f "$SCRIPT_DIR/../argocd/bootstrap/02-root-apps.yaml"
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to apply root-apps${NC}"
@@ -142,24 +171,15 @@ echo -e "${BOLD}${GREEN}========================================${NC}"
 echo -e "${BOLD}${GREEN}  Initial Setup Complete!${NC}"
 echo -e "${BOLD}${GREEN}========================================${NC}\n"
 
-echo -e "${BOLD}${YELLOW}⚠️  NEXT STEPS - LOAD DOCKER IMAGES${NC}\n"
-echo -e "Before deploying your applications, you need to load your Docker images into the Kind cluster:\n"
-echo -e "${CYAN}1. Build your Docker images (if not already built):${NC}"
-echo -e "   ${BLUE}docker build -t ecommerce-backend:latest ./path/to/backend${NC}"
-echo -e "   ${BLUE}docker build -t ecommerce-frontend:latest ./path/to/frontend${NC}\n"
-
-echo -e "${CYAN}2. Load the images into the Kind cluster:${NC}"
-echo -e "   ${BLUE}kind load docker-image ecommerce-backend:latest --name $CLUSTER_NAME${NC}"
-echo -e "   ${BLUE}kind load docker-image ecommerce-frontend:latest --name $CLUSTER_NAME${NC}\n"
+echo -e "${BOLD}${YELLOW}⚠️  NEXT STEP - START LOAD BALANCER${NC}\n"
+echo -e "Run this in a separate terminal to enable LoadBalancer support:\n"
+echo -e "   ${BLUE}make lb${NC}\n"
 
 echo -e "${BOLD}${CYAN}Useful commands:${NC}"
-echo -e "  • View ArgoCD password:"
-echo -e "    ${BLUE}kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath=\"{.data.password}\" | base64 -d && echo${NC}"
-echo -e "  • Port-forward ArgoCD UI:"
-echo -e "    ${BLUE}kubectl port-forward svc/argocd-server -n argocd 8080:443${NC}"
-echo -e "  • View cluster info:"
-echo -e "    ${BLUE}kubectl cluster-info --context kind-$CLUSTER_NAME${NC}"
-echo -e "  • View all pods:"
-echo -e "    ${BLUE}kubectl get pods -A${NC}\n"
+echo -e "  • View ArgoCD password:   ${BLUE}make argocd-password${NC}"
+echo -e "  • Port-forward ArgoCD UI: ${BLUE}make argocd-ui${NC}"
+echo -e "  • Port-forward Vault UI:  ${BLUE}make vault-ui${NC}"
+echo -e "  • Port-forward Grafana:   ${BLUE}make grafana-ui${NC}"
+echo -e "  • View all pods:          ${BLUE}make pods${NC}\n"
 
 echo -e "${GREEN}Happy coding!${NC}\n"
