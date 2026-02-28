@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: traefik-appset
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  generators:
+    - list:
+        elements:
+          - env: local
+            url: https://kubernetes.default.svc
+            repoURL: https://traefik.github.io/charts
+            targetRevision: 35.2.0
+          # - env: prod
+          #   url: https://prod-cluster-url
+  template:
+    metadata:
+      name: "{{.env}}-traefik"
+    spec:
+      project: default
+      sources:
+        - chart: traefik
+          repoURL: "{{.repoURL}}"
+          targetRevision: "{{.targetRevision}}"
+          helm:
+            releaseName: traefik-ingress-controller
+            valueFiles:
+              - $values/argocd/appSets/platform/values/traefik/values.local.yaml
+        - repoURL: https://github.com/KristijanJ/ecommerce-shop-gitops.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: "{{.url}}"
+        namespace: traefik
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

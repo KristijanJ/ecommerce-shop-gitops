@@ -1,0 +1,42 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: vault-appset
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  generators:
+    - list:
+        elements:
+          - env: local
+            url: https://kubernetes.default.svc
+            repoURL: https://helm.releases.hashicorp.com
+            targetRevision: 0.32.0
+          # - env: prod (this wont go into prod)
+          #   url: https://prod-cluster-url
+  template:
+    metadata:
+      name: "{{.env}}-vault"
+    spec:
+      project: default
+      sources:
+        - chart: vault
+          repoURL: "{{.repoURL}}"
+          targetRevision: "{{.targetRevision}}"
+          helm:
+            releaseName: vault
+            valueFiles:
+              - $values/argocd/appSets/platform/values/vault/values.local.yaml
+        - repoURL: https://github.com/KristijanJ/ecommerce-shop-gitops.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: "{{.url}}"
+        namespace: vault
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

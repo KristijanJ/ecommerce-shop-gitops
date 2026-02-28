@@ -1,0 +1,42 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: metrics-server-appset
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  generators:
+    - list:
+        elements:
+          - env: local
+            url: https://kubernetes.default.svc
+            repoURL: https://kubernetes-sigs.github.io/metrics-server/
+            targetRevision: 3.13.0
+          # - env: prod
+          #   url: https://prod-cluster-url
+  template:
+    metadata:
+      name: "{{.env}}-metrics-server"
+    spec:
+      project: default
+      sources:
+        - chart: metrics-server
+          repoURL: "{{.repoURL}}"
+          targetRevision: "{{.targetRevision}}"
+          helm:
+            releaseName: metrics-server
+            valueFiles:
+              - $values/argocd/appSets/platform/values/metrics-server/values.local.yaml
+        - repoURL: https://github.com/KristijanJ/ecommerce-shop-gitops.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: "{{.url}}"
+        namespace: kube-system
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

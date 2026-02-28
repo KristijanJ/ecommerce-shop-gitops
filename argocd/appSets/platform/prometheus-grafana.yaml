@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: prometheus-grafana-appset
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  generators:
+    - list:
+        elements:
+          - env: local
+            url: https://kubernetes.default.svc
+            repoURL: https://prometheus-community.github.io/helm-charts
+            targetRevision: 80.14.3
+          # - env: prod
+          #   url: https://prod-cluster-url
+  template:
+    metadata:
+      name: "{{.env}}-prometheus-grafana"
+    spec:
+      project: default
+      sources:
+        - chart: kube-prometheus-stack
+          repoURL: "{{.repoURL}}"
+          targetRevision: "{{.targetRevision}}"
+          helm:
+            releaseName: kube-prometheus-stack
+            valueFiles:
+              - $values/argocd/appSets/platform/values/prometheus-grafana/values.local.yaml
+        - repoURL: https://github.com/KristijanJ/ecommerce-shop-gitops.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: "{{.url}}"
+        namespace: monitoring
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

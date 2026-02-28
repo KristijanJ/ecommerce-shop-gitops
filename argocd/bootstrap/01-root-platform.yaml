@@ -1,20 +1,20 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: local-infrastructure
+  name: root-platform
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   project: default
   source:
     repoURL: https://github.com/KristijanJ/ecommerce-shop-gitops.git
     targetRevision: HEAD
-    path: apps/infrastructure/envs/local
+    path: argocd/appSets/platform
   destination:
     server: https://kubernetes.default.svc
-    namespace: local-infrastructure
+    namespace: argocd
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
-    syncOptions:
-      - CreateNamespace=true

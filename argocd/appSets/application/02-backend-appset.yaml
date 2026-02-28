@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: backend-appset
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  generators:
+    - list:
+        elements:
+          - env: local
+            url: https://kubernetes.default.svc
+          # - env: prod
+          #   url: https://prod-cluster-url
+  template:
+    metadata:
+      name: '{{.env}}-backend'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/KristijanJ/ecommerce-shop-gitops.git
+        targetRevision: HEAD
+        path: apps/backend/envs/{{.env}}
+      destination:
+        server: '{{.url}}'
+        namespace: '{{.env}}-backend'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
