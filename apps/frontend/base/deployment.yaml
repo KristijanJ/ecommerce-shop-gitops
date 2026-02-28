@@ -31,6 +31,16 @@ spec:
                 secretKeyRef:
                   name: jwt-secret
                   key: jwt-secret
+            - name: "REDIS_HOST"
+              valueFrom:
+                configMapKeyRef:
+                  name: ecommerce-fe
+                  key: redis_host
+            - name: "REDIS_PORT"
+              valueFrom:
+                configMapKeyRef:
+                  name: ecommerce-fe
+                  key: redis_port
           ports:
             - containerPort: 3000
           livenessProbe:

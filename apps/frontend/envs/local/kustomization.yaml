@@ -12,3 +12,7 @@ patches:
     target:
       kind: Deployment
       name: ecommerce-fe
+  - path: config-map-patch.yaml
+    target:
+      kind: ConfigMap
+      name: ecommerce-fe
