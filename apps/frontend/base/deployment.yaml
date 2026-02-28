@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
         - name: ecommerce-fe
-          image: kristijan92/ecommerce-shop-fe:1.1.3
+          image: kristijan92/ecommerce-shop-fe:1.1.4
           resources:
             requests:
               memory: "128Mi"
