@@ -15,16 +15,16 @@ spec:
           #   url: https://prod-cluster-url
   template:
     metadata:
-      name: "{{.env}}-frontend"
+      name: "{{env}}-frontend"
     spec:
       project: default
       source:
         repoURL: https://github.com/KristijanJ/ecommerce-shop-gitops.git
         targetRevision: HEAD
-        path: apps/frontend/envs/{{.env}}
+        path: apps/frontend/envs/{{env}}
       destination:
-        server: "{{.url}}"
-        namespace: "{{.env}}-frontend"
+        server: "{{url}}"
+        namespace: "{{env}}-frontend"
       syncPolicy:
         automated:
           prune: true

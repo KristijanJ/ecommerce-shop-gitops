@@ -17,13 +17,13 @@ spec:
           #   url: https://prod-cluster-url
   template:
     metadata:
-      name: "{{.env}}-traefik"
+      name: "{{env}}-traefik"
     spec:
       project: default
       sources:
         - chart: traefik
-          repoURL: "{{.repoURL}}"
-          targetRevision: "{{.targetRevision}}"
+          repoURL: "{{repoURL}}"
+          targetRevision: "{{targetRevision}}"
           helm:
             releaseName: traefik-ingress-controller
             valueFiles:
@@ -32,7 +32,7 @@ spec:
           targetRevision: HEAD
           ref: values
       destination:
-        server: "{{.url}}"
+        server: "{{url}}"
         namespace: traefik
       syncPolicy:
         automated:

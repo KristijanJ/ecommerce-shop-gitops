@@ -55,7 +55,7 @@ echo ""
 # Step 3: Deploy Platform
 # ------------------------------------------
 echo -e "${BOLD}${BLUE}[3/5] Deploying Platform...${NC}"
-kubectl apply -f "$SCRIPT_DIR/../argocd/bootstrap/root-platform.yaml"
+kubectl apply -f "$SCRIPT_DIR/../argocd/bootstrap/01-root-platform.yaml"
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to apply root-platform${NC}"
     exit 1
@@ -65,11 +65,21 @@ echo ""
 echo -e "${CYAN}Waiting for platform to be ready...${NC}"
 echo -e "${CYAN}(This may take a few minutes while Helm charts are pulled and deployed)${NC}\n"
 
+echo -e "${CYAN}Waiting for Vault pod to appear...${NC}"
+until kubectl get pods -n vault -l app.kubernetes.io/name=vault 2>/dev/null | grep -q "vault"; do
+    sleep 10
+done
+
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=vault -n vault --timeout=300s
 if [ $? -ne 0 ]; then
     echo -e "${RED}Vault pod is not ready, cannot seed secrets${NC}"
     exit 1
 fi
+
+echo -e "${CYAN}Waiting for External Secrets pod to appear...${NC}"
+until kubectl get pods -n external-secrets -l app.kubernetes.io/instance=external-secrets 2>/dev/null | grep -q "external-secrets"; do
+    sleep 10
+done
 
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=external-secrets -n external-secrets --timeout=180s
 if [ $? -ne 0 ]; then
@@ -118,7 +128,7 @@ echo -e "${GREEN}Vault JWT secret seeded!${NC}\n"
 # Step 5: Deploy Applications
 # ------------------------------------------
 echo -e "${BOLD}${BLUE}[5/5] Deploying Applications...${NC}"
-kubectl apply -f "$SCRIPT_DIR/../argocd/bootstrap/root-apps.yaml"
+kubectl apply -f "$SCRIPT_DIR/../argocd/bootstrap/02-root-apps.yaml"
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to apply root-apps${NC}"
     exit 1

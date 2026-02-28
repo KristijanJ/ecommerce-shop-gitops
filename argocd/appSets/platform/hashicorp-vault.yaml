@@ -17,13 +17,13 @@ spec:
           #   url: https://prod-cluster-url
   template:
     metadata:
-      name: "{{.env}}-vault"
+      name: "{{env}}-vault"
     spec:
       project: default
       sources:
         - chart: vault
-          repoURL: "{{.repoURL}}"
-          targetRevision: "{{.targetRevision}}"
+          repoURL: "{{repoURL}}"
+          targetRevision: "{{targetRevision}}"
           helm:
             releaseName: vault
             valueFiles:
@@ -32,7 +32,7 @@ spec:
           targetRevision: HEAD
           ref: values
       destination:
-        server: "{{.url}}"
+        server: "{{url}}"
         namespace: vault
       syncPolicy:
         automated:

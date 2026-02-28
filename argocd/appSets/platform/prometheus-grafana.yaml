@@ -17,13 +17,13 @@ spec:
           #   url: https://prod-cluster-url
   template:
     metadata:
-      name: "{{.env}}-prometheus-grafana"
+      name: "{{env}}-prometheus-grafana"
     spec:
       project: default
       sources:
         - chart: kube-prometheus-stack
-          repoURL: "{{.repoURL}}"
-          targetRevision: "{{.targetRevision}}"
+          repoURL: "{{repoURL}}"
+          targetRevision: "{{targetRevision}}"
           helm:
             releaseName: kube-prometheus-stack
             valueFiles:
@@ -32,7 +32,7 @@ spec:
           targetRevision: HEAD
           ref: values
       destination:
-        server: "{{.url}}"
+        server: "{{url}}"
         namespace: monitoring
       syncPolicy:
         automated:

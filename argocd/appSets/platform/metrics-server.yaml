@@ -17,13 +17,13 @@ spec:
           #   url: https://prod-cluster-url
   template:
     metadata:
-      name: "{{.env}}-metrics-server"
+      name: "{{env}}-metrics-server"
     spec:
       project: default
       sources:
         - chart: metrics-server
-          repoURL: "{{.repoURL}}"
-          targetRevision: "{{.targetRevision}}"
+          repoURL: "{{repoURL}}"
+          targetRevision: "{{targetRevision}}"
           helm:
             releaseName: metrics-server
             valueFiles:
@@ -32,7 +32,7 @@ spec:
           targetRevision: HEAD
           ref: values
       destination:
-        server: "{{.url}}"
+        server: "{{url}}"
         namespace: kube-system
       syncPolicy:
         automated:
