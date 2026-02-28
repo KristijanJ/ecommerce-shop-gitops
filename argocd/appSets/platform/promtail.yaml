@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: promtail-appset
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  generators:
+    - list:
+        elements:
+          - env: local
+            url: https://kubernetes.default.svc
+            repoURL: https://grafana.github.io/helm-charts
+            targetRevision: 6.17.1
+          # - env: prod
+          #   url: https://prod-cluster-url
+  template:
+    metadata:
+      name: "{{env}}-promtail"
+    spec:
+      project: default
+      sources:
+        - chart: promtail
+          repoURL: "{{repoURL}}"
+          targetRevision: "{{targetRevision}}"
+          helm:
+            releaseName: promtail
+            valueFiles:
+              - $values/argocd/appSets/platform/values/promtail/values.local.yaml
+        - repoURL: https://github.com/KristijanJ/ecommerce-shop-gitops.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: "{{url}}"
+        namespace: monitoring
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

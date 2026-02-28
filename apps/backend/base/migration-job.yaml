@@ -9,7 +9,7 @@ spec:
     spec:
       containers:
         - name: ecommerce-shop-be-migrations
-          image: kristijan92/ecommerce-shop-be:1.1.1
+          image: kristijan92/ecommerce-shop-be:1.1.2
           command: ["npx", "prisma", "migrate", "deploy"]
           env:
             - name: "DATABASE_URL"

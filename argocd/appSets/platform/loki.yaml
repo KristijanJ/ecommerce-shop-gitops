@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: loki-appset
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  generators:
+    - list:
+        elements:
+          - env: local
+            url: https://kubernetes.default.svc
+            repoURL: https://grafana.github.io/helm-charts
+            targetRevision: 6.53.0
+          # - env: prod
+          #   url: https://prod-cluster-url
+  template:
+    metadata:
+      name: "{{env}}-loki"
+    spec:
+      project: default
+      sources:
+        - chart: loki
+          repoURL: "{{repoURL}}"
+          targetRevision: "{{targetRevision}}"
+          helm:
+            releaseName: loki
+            valueFiles:
+              - $values/argocd/appSets/platform/values/loki/values.local.yaml
+        - repoURL: https://github.com/KristijanJ/ecommerce-shop-gitops.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: "{{url}}"
+        namespace: monitoring
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
