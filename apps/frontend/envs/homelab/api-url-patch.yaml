@@ -9,4 +9,4 @@ spec:
         - name: ecommerce-fe
           env:
             - name: "API_URL"
-              value: "http://homelab-ecommerce-be-service.local-backend.svc.cluster.local"
+              value: "http://homelab-ecommerce-be-service.homelab-backend.svc.cluster.local"
