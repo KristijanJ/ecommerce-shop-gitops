@@ -7,3 +7,9 @@ resources:
 
 namePrefix: homelab-
 nameSuffix: ""
+
+patches:
+  - path: ingress-patch.yaml
+    target:
+      kind: Ingress
+      name: ecommerce-be-ingress
