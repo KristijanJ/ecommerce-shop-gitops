@@ -14,11 +14,14 @@ main() {
         "kind")
             install_argocd_kind
             ;;
+        "homelab")
+            install_argocd_homelab
+            ;;
         "eks")
             install_argocd_eks
             ;;
         *)
-            echo -e "${RED}Unknown command. Usage: ./install-argo-cd [kind|eks]${NC}"
+            echo -e "${RED}Unknown command. Usage: ./install-argo-cd [kind|homelab|eks]${NC}"
             ;;
     esac
 }
@@ -32,6 +35,13 @@ install_argocd_kind() {
     else
         echo -e "${RED}Kind cluster not found, create it using ./kind-cluster.sh create${NC}"
     fi
+}
+
+install_argocd_homelab() {
+    echo -e "${YELLOW}Installing ArgoCD on homelab cluster...${NC}"
+    kubectl create namespace argocd
+    kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+    echo -e "${GREEN}ArgoCD installed!${NC}"
 }
 
 install_argocd_eks() {

@@ -79,6 +79,16 @@ load-frontend-image: ## Load the frontend image into Kind (override tag with FE_
 	@echo "$(GREEN)$(CHECK) Frontend image loaded$(NC)"
 
 # ------------------------------------------------------------------------------
+### Homelab development commands:
+# ------------------------------------------------------------------------------
+
+.PHONY: start-homelab
+start-homelab: ## Start the full homelab environment (cluster + ArgoCD + monitoring)
+	@echo "$(CYAN)Starting homelab environment...$(NC)"
+	@./scripts/start-homelab.sh
+	@echo "$(GREEN)$(CHECK) Homelab environment ready$(NC)"
+
+# ------------------------------------------------------------------------------
 ### ArgoCD commands:
 # ------------------------------------------------------------------------------
 

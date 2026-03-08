@@ -1,0 +1,19 @@
+all:
+  children:
+    control:
+      hosts:
+        control_plane:
+          ansible_host: 192.168.0.20
+    workers:
+      hosts:
+        worker_01:
+          ansible_host: 192.168.0.21
+        worker_02:
+          ansible_host: 192.168.0.22
+    services:
+      hosts:
+        services_node:
+          ansible_host: 192.168.0.30
+  vars:
+    ansible_user: ubuntu
+    ansible_ssh_private_key_file: ~/.ssh/proxmox
