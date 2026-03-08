@@ -9,7 +9,7 @@ spec:
   generators:
     - list:
         elements:
-          - env: local
+          - env: homelab
             url: https://kubernetes.default.svc
             repoURL: https://grafana.github.io/helm-charts
             targetRevision: 6.53.0
@@ -27,7 +27,7 @@ spec:
           helm:
             releaseName: loki
             valueFiles:
-              - $values/argocd/appSets/platform/values/loki/values.local.yaml
+              - $values/argocd/appSets/platform/values/loki/values.{{env}}.yaml
         - repoURL: https://github.com/KristijanJ/ecommerce-shop-gitops.git
           targetRevision: HEAD
           ref: values

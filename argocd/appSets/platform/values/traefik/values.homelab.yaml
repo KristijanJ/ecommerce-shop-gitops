@@ -1,0 +1,37 @@
+deployment:
+  kind: DaemonSet
+
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 0
+
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+
+nodeSelector:
+  node-role.kubernetes.io/control-plane: ""
+
+ports:
+  web:
+    hostPort: 80
+  websecure:
+    hostPort: 443
+
+ingressClass:
+  name: traefik
+
+ingressRoute:
+  dashboard:
+    enabled: true
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 300m
+    memory: 256Mi

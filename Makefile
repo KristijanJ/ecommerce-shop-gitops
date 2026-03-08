@@ -124,7 +124,7 @@ vault-seed: ## Seed Vault with all secrets (DB credentials + JWT secret)
 		db-name=ecommerce \
 		db-user=postgres \
 		db-pass=postgres \
-		db-host="postgresql://postgres:postgres@host.docker.internal:5432/ecommerce?schema=public"
+		db-host="postgresql://postgres:postgres@192.168.0.30:5432/ecommerce?schema=public"
 	@echo "$(GREEN)$(CHECK) Vault DB credentials seeded$(NC)"
 	@echo "$(CYAN)Seeding Vault with JWT secret...$(NC)"
 	@kubectl exec -n vault vault-0 -- vault kv put secret/jwt \

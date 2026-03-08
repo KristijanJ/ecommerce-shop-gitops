@@ -9,7 +9,7 @@ spec:
   generators:
     - list:
         elements:
-          - env: local
+          - env: homelab
             url: https://kubernetes.default.svc
             repoURL: https://prometheus-community.github.io/helm-charts
             targetRevision: 80.14.3
@@ -27,7 +27,7 @@ spec:
           helm:
             releaseName: kube-prometheus-stack
             valueFiles:
-              - $values/argocd/appSets/platform/values/prometheus-grafana/values.local.yaml
+              - $values/argocd/appSets/platform/values/prometheus-grafana/values.{{env}}.yaml
         - repoURL: https://github.com/KristijanJ/ecommerce-shop-gitops.git
           targetRevision: HEAD
           ref: values

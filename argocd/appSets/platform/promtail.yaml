@@ -9,7 +9,7 @@ spec:
   generators:
     - list:
         elements:
-          - env: local
+          - env: homelab
             url: https://kubernetes.default.svc
             repoURL: https://grafana.github.io/helm-charts
             targetRevision: 6.17.1
@@ -27,7 +27,7 @@ spec:
           helm:
             releaseName: promtail
             valueFiles:
-              - $values/argocd/appSets/platform/values/promtail/values.local.yaml
+              - $values/argocd/appSets/platform/values/promtail/values.{{env}}.yaml
         - repoURL: https://github.com/KristijanJ/ecommerce-shop-gitops.git
           targetRevision: HEAD
           ref: values

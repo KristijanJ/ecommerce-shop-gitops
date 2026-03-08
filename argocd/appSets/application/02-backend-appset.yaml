@@ -9,7 +9,7 @@ spec:
   generators:
     - list:
         elements:
-          - env: local
+          - env: homelab
             url: https://kubernetes.default.svc
           # - env: prod
           #   url: https://prod-cluster-url

@@ -5,7 +5,7 @@ resources:
   - ../../base
   - network-policies.yaml
 
-namePrefix: local-
+namePrefix: homelab-
 nameSuffix: ""
 
 patches:
