@@ -6,3 +6,12 @@ spec:
   ingressClassName: traefik
   rules:
     - host: ecommerce.192.168.0.20.traefik.me
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ecommerce-fe-service
+                port:
+                  number: 80
