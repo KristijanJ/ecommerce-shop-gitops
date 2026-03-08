@@ -15,12 +15,6 @@ tolerations:
 nodeSelector:
   node-role.kubernetes.io/control-plane: "true"
 
-ports:
-  web:
-    hostPort: 80
-  websecure:
-    hostPort: 443
-
 ingressClass:
   name: traefik
 
