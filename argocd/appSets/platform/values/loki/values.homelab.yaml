@@ -18,6 +18,13 @@ deploymentMode: SingleBinary
 
 singleBinary:
   replicas: 1
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: node-role.kubernetes.io/control-plane
+                operator: DoesNotExist
   resources:
     requests:
       cpu: 100m

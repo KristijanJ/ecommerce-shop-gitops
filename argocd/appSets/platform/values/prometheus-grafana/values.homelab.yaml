@@ -1,5 +1,12 @@
 prometheus:
   prometheusSpec:
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: node-role.kubernetes.io/control-plane
+                  operator: DoesNotExist
     resources:
       requests:
         memory: 400Mi
@@ -17,6 +24,13 @@ prometheus:
               storage: 5Gi
 
 grafana:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: node-role.kubernetes.io/control-plane
+                operator: DoesNotExist
   resources:
     requests:
       memory: 128Mi
@@ -34,6 +48,13 @@ grafana:
 
 alertmanager:
   alertmanagerSpec:
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: node-role.kubernetes.io/control-plane
+                  operator: DoesNotExist
     resources:
       requests:
         memory: 128Mi
