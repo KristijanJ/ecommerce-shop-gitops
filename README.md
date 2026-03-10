@@ -1,6 +1,6 @@
 # ecommerce-shop-gitops
 
-GitOps configuration for the ecommerce shop, running on a local KinD cluster modelled after a production AWS EKS setup.
+GitOps configuration for the ecommerce shop, running on a Proxmox homelab k3s cluster modelled after a production AWS EKS setup.
 
 Part of a multi-repo project:
 
@@ -9,57 +9,62 @@ Part of a multi-repo project:
 | [ecommerce-shop-gitops](https://github.com/KristijanJ/ecommerce-shop-gitops) | **This repo** — Kubernetes manifests, ArgoCD, platform tooling |
 | [ecommerce-shop-be](https://github.com/KristijanJ/ecommerce-shop-be)         | Express.js REST API                                            |
 | [ecommerce-shop-fe](https://github.com/KristijanJ/ecommerce-shop-fe)         | Next.js frontend                                               |
-| [ecommerce-infra](https://github.com/KristijanJ/ecommerce-infra)             | Local Docker Compose for PostgreSQL and Redis                  |
 
 ---
 
 ## Architecture
 
-```
+```text
 ┌──────────────────────────────────────────────────────────────────┐
-│                        KinD Cluster                              │
-│  ┌──────────────┐  ┌───────────────────────────────────────────┐ │
-│  │ control-plane│  │           worker nodes (x3)               │ │
-│  │   (Traefik)  │  │                                           │ │
-│  └──────┬───────┘  │  ┌───────────────┐  ┌──────────────────┐  │ │
-│         │          │  │local-frontend │  │  local-backend   │  │ │
-│    hostPort        │  │  (Next.js)    │  │   (Express.js)   │  │ │
-│    80 / 443        │  └──────┬────────┘  └────────┬─────────┘  │ │
-│         │          │         │                    │            │ │
-│         │          │  ┌──────▼────────────────────▼─────────┐  │ │
-│         │          │  │          monitoring                 │  │ │
-│         │          │  │  Prometheus · Grafana · Loki        │  │ │
-│         │          │  │  Alertmanager · Promtail            │  │ │
-│         │          │  └─────────────────────────────────────┘  │ │
-│         │          │  ┌─────────────────────────────────────┐  │ │
-│         │          │  │   vault · external-secrets · argocd │  │ │
-│         │          │  └─────────────────────────────────────┘  │ │
-│         │          └───────────────────────────────────────────┘ │
-└─────────┼────────────────────────────────────────────────────────┘
-          │ Ingress
-    ┌─────▼─────────────────────────────────────────────┐
-    │              Docker (host machine)                │
-    │          PostgreSQL :5432 · Redis :6379           │
-    └───────────────────────────────────────────────────┘
+│                     Proxmox Homelab                              │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │                  k3s Cluster                            │    │
+│  │                                                         │    │
+│  │  ┌──────────────┐   ┌──────────────┐  ┌─────────────┐  │    │
+│  │  │ control-plane│   │   worker-1   │  │  worker-2   │  │    │
+│  │  │ 192.168.0.20 │   │ 192.168.0.21 │  │192.168.0.22 │  │    │
+│  │  │   (Traefik)  │   │              │  │             │  │    │
+│  │  └──────┬───────┘   └──────────────┘  └─────────────┘  │    │
+│  │         │                                               │    │
+│  │    svclb (klipper) forwards 80/443 on all nodes         │    │
+│  │                                                         │    │
+│  │  ┌──────────────────────┐  ┌──────────────────────────┐ │    │
+│  │  │  homelab-frontend    │  │   homelab-backend        │ │    │
+│  │  │    (Next.js)         │  │    (Express.js)          │ │    │
+│  │  └──────────────────────┘  └──────────────────────────┘ │    │
+│  │  ┌─────────────────────────────────────────────────────┐ │    │
+│  │  │                  monitoring                         │ │    │
+│  │  │      Prometheus · Grafana · Loki · Promtail         │ │    │
+│  │  └─────────────────────────────────────────────────────┘ │    │
+│  │  ┌─────────────────────────────────────────────────────┐ │    │
+│  │  │        vault · external-secrets · argocd            │ │    │
+│  │  └─────────────────────────────────────────────────────┘ │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │              services VM  (192.168.0.30)                │    │
+│  │              PostgreSQL :5432 · Redis :6379             │    │
+│  └─────────────────────────────────────────────────────────┘    │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
-**Stateless services** (frontend, backend) run in Kubernetes. **Stateful services** (PostgreSQL, Redis) run in Docker — mirroring how AWS RDS and ElastiCache are managed outside of EKS in production.
+**Stateless services** (frontend, backend) run in Kubernetes. **Stateful services** (PostgreSQL, Redis) run on a dedicated services VM — mirroring how AWS RDS and ElastiCache are managed outside of EKS in production.
 
 ---
 
 ## Platform Stack
 
-| Component                     | Purpose                    | Notes                                              |
-| ----------------------------- | -------------------------- | -------------------------------------------------- |
-| **ArgoCD**                    | GitOps continuous delivery | App of Apps pattern                                |
-| **Kustomize**                 | Environment overlays       | `base/` + `envs/local/` + `envs/prod/`             |
-| **Traefik**                   | Ingress controller         | DaemonSet on control-plane, hostPort 80/443        |
-| **Vault**                     | Secrets backend            | Dev mode locally, swappable to AWS Secrets Manager |
-| **External Secrets Operator** | Secret sync                | Pulls from Vault → Kubernetes Secrets              |
-| **kube-prometheus-stack**     | Metrics & dashboards       | Prometheus + Grafana + Alertmanager                |
-| **Loki + Promtail**           | Log aggregation            | Promtail DaemonSet ships pod logs to Loki          |
-| **Metrics Server**            | Resource metrics           | Required for HPA                                   |
-| **cloud-provider-kind**       | LoadBalancer support       | Assigns real IPs to LoadBalancer services in KinD  |
+| Component                     | Purpose                    | Notes                                                 |
+| ----------------------------- | -------------------------- | ----------------------------------------------------- |
+| **ArgoCD**                    | GitOps continuous delivery | App of Apps pattern                                   |
+| **Kustomize**                 | Environment overlays       | `base/` + `envs/homelab/` + `envs/prod/`              |
+| **Traefik**                   | Ingress controller         | DaemonSet on control-plane, k3s svclb for LB IPs      |
+| **Vault**                     | Secrets backend            | Dev mode in homelab, swappable to AWS Secrets Manager |
+| **External Secrets Operator** | Secret sync                | Pulls from Vault → Kubernetes Secrets                 |
+| **kube-prometheus-stack**     | Metrics & dashboards       | Prometheus + Grafana + Alertmanager                   |
+| **Loki + Promtail**           | Log aggregation            | Promtail DaemonSet ships pod logs to Loki             |
+| **Metrics Server**            | Resource metrics           | Required for HPA                                      |
 
 ---
 
@@ -69,7 +74,7 @@ Part of a multi-repo project:
 
 ArgoCD is bootstrapped with two root Applications:
 
-```
+```text
 argocd/bootstrap/
 ├── 01-root-platform.yaml   → watches argocd/appSets/platform/  (Traefik, Vault, Prometheus, Loki, ...)
 └── 02-root-apps.yaml       → watches argocd/appSets/application/ (frontend, backend, infrastructure)
@@ -79,27 +84,27 @@ Any change pushed to this repo is picked up automatically — no manual `kubectl
 
 ### Kustomize base/overlay
 
-```
+```text
 apps/
 ├── backend/
 │   ├── base/               # Environment-agnostic manifests
 │   └── envs/
-│       ├── local/          # KinD-specific patches (image, config, network policies)
+│       ├── homelab/        # Proxmox k3s patches (ingress host, network policies)
 │       └── prod/           # EKS-specific patches
 └── frontend/
     ├── base/
     └── envs/
-        ├── local/
+        ├── homelab/        # Proxmox k3s patches (API URL, ingress host, network policies)
         └── prod/
 ```
 
-`namePrefix: local-` in the local overlay means all resources are namespaced by environment, so local and prod environments can coexist in the same cluster.
+`namePrefix: homelab-` in the homelab overlay means all resources are namespaced by environment, so multiple environments can coexist in the same cluster.
 
 ### Sync waves
 
 Deployment ordering within a sync is controlled by `argocd.argoproj.io/sync-wave`:
 
-```
+```text
 wave -2  ExternalSecret    → ESO creates db-credentials and jwt-secret from Vault
 wave -1  Migration Job     → Prisma runs database migrations (retries until secrets exist)
 wave  0  Deployment        → Application pods start (secrets are guaranteed to be present)
@@ -113,7 +118,7 @@ The migration Job is an ArgoCD hook (`hook: Sync`, `hook-delete-policy: BeforeHo
 
 No secret values exist anywhere in this repository. Git holds only the _shape_ of secrets, not their values.
 
-```
+```text
 Vault (dev mode)
   └── secret/db    → db-credentials  K8s Secret  (backend namespace)
   └── secret/jwt   → jwt-secret      K8s Secret  (backend + frontend namespaces)
@@ -137,8 +142,8 @@ The full PLG stack (Prometheus + Loki + Grafana) is deployed via ArgoCD:
 Query logs in Grafana → Explore → Loki datasource:
 
 ```logql
-{namespace="local-backend"} | json | level="error"
-{namespace="local-frontend"} | json | msg=~".*payment.*"
+{namespace="homelab-backend"} | json | level="error"
+{namespace="homelab-frontend"} | json | msg=~".*payment.*"
 ```
 
 ---
@@ -149,10 +154,10 @@ Query logs in Grafana → Explore → Loki datasource:
 
 Both application namespaces use a **default-deny-all** policy with explicit allow rules:
 
-| Namespace        | Allowed ingress    | Allowed egress                  |
-| ---------------- | ------------------ | ------------------------------- |
-| `local-frontend` | Traefik only       | Backend :3000, Redis :6379, DNS |
-| `local-backend`  | Traefik + Frontend | PostgreSQL :5432, DNS           |
+| Namespace          | Allowed ingress    | Allowed egress                  |
+| ------------------ | ------------------ | ------------------------------- |
+| `homelab-frontend` | Traefik only       | Backend :3000, Redis :6379, DNS |
+| `homelab-backend`  | Traefik + Frontend | PostgreSQL :5432, DNS           |
 
 ### No secrets in Git
 
@@ -172,49 +177,72 @@ Covered above — Vault + ESO ensure no credentials are ever committed.
 
 ---
 
-## Quick Start
+## Quick Start — Homelab
 
 ### Prerequisites
 
-```bash
-make check-requirements
-```
+- Proxmox VMs up and k3s cluster running
+- `kubectl` configured to point at the cluster
+- `argocd` CLI installed
 
-Requires: `docker`, `kind`, `kubectl`, `argocd`, `helm`, `cloud-provider-kind`
-
-### 1. Start local databases
+### 1. Run the bootstrap script
 
 ```bash
-# In the ecommerce-infra repo
-make start-local
+./scripts/start-homelab.sh
 ```
 
-### 2. Start the cluster
+This handles everything in order: installs ArgoCD, deploys the platform stack, seeds Vault, and deploys the applications.
+
+### 2. Access
+
+- **Frontend:** <http://ecommerce.192.168.0.20.traefik.me>
+- **Backend API:** <http://api.192.168.0.20.traefik.me>
+- **ArgoCD:** `make argocd-ui` → <https://localhost:8080>
+- **Grafana:** `make grafana-ui` → <http://localhost:3000> (admin/admin)
+- **Vault:** `make vault-ui` → <http://localhost:8200> (token: root)
+
+---
+
+## After Proxmox Restart
+
+When Proxmox is shut down and powered back on, the following steps are needed:
+
+### 1. Wait for the cluster to come up
+
+VMs auto-start (start-on-boot enabled). k3s starts automatically via systemd on each node. Give it ~2 minutes for all nodes to rejoin and pods to reschedule.
 
 ```bash
-make start        # creates KinD cluster, installs ArgoCD, bootstraps all apps
+kubectl get nodes        # all should be Ready
+kubectl get pods -A      # wait for everything to be Running
 ```
 
-### 3. Load application images
+### 2. Fix the ArgoCD repo-server (if needed)
 
-KinD doesn't pull from public registries by default:
+When a node shuts down abruptly, pods on that node get stuck in `Unknown` state. Kubernetes does not automatically reschedule them. The most common victim is `argocd-repo-server`.
+
+**Symptom:** ArgoCD UI shows `connection error: dial tcp <ip>:8081: connect: connection refused` across all apps.
+
+**Fix:**
 
 ```bash
-make load-backend-image   # BE_TAG=x.x.x to override
-make load-frontend-image  # FE_TAG=x.x.x to override
+kubectl get pods -n argocd                          # find the Unknown pod
+kubectl delete pod -n argocd <repo-server-pod>      # delete it — reschedules immediately
 ```
 
-### 4. Seed Vault
+### 3. Reseed Vault
+
+Vault runs in dev mode — all secrets are wiped on pod restart. Without this step the backend will fail to connect to the database.
 
 ```bash
 make vault-seed
 ```
 
-After a minute or two, ArgoCD will have synced everything. The apps are accessible at:
+### 4. Verify
 
-- **Frontend:** https://ecommerce.127.0.0.1.traefik.me
-- **Backend API:** https://api.127.0.0.1.traefik.me
-- **ArgoCD:** `make argocd-ui` → https://localhost:8080
+```bash
+kubectl get pods -A                  # everything Running
+curl http://api.192.168.0.20.traefik.me/products   # should return JSON
+```
 
 ---
 
@@ -222,13 +250,6 @@ After a minute or two, ArgoCD will have synced everything. The apps are accessib
 
 ```bash
 make help               # full command list
-
-# Cluster
-make start              # full environment bootstrap
-make cluster-create     # KinD cluster only
-make cluster-delete     # delete cluster
-make cluster-status     # node status
-make lb                 # LoadBalancer support (separate terminal)
 
 # ArgoCD
 make argocd-ui          # https://localhost:8080
@@ -251,23 +272,19 @@ make logs-backend       # tail backend pod logs
 make logs-frontend      # tail frontend pod logs
 make hpa                # HPA status
 make events             # recent warning events
-
-# Teardown
-make clean              # remove ArgoCD applications
-make nuke               # delete entire cluster
 ```
 
 ---
 
 ## Planned: EKS
 
-The local setup is intentionally structured to map cleanly to AWS:
+The homelab setup is intentionally structured to map cleanly to AWS:
 
-| Local                    | AWS                                                  |
+| Homelab                  | AWS                                                  |
 | ------------------------ | ---------------------------------------------------- |
-| KinD cluster             | EKS                                                  |
+| k3s on Proxmox           | EKS                                                  |
 | Traefik                  | AWS Load Balancer Controller                         |
 | Vault (dev mode)         | AWS Secrets Manager + IRSA                           |
 | self-signed TLS          | cert-manager + ACM / Let's Encrypt                   |
-| Docker Compose databases | RDS (Postgres) + ElastiCache (Redis)                 |
+| Services VM (PG + Redis) | RDS (Postgres) + ElastiCache (Redis)                 |
 | Manual image load        | GitHub Actions → ECR → image tag update in this repo |
