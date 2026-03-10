@@ -185,7 +185,21 @@ Covered above — Vault + ESO ensure no credentials are ever committed.
 - `kubectl` configured to point at the cluster
 - `argocd` CLI installed
 
-### 1. Run the bootstrap script
+### 1. Log in to the ArgoCD CLI
+
+ArgoCD runs as a ClusterIP service, so port-forward first:
+
+```bash
+make argocd-ui   # port-forwards to localhost:8080 — keep this running in a separate terminal
+```
+
+Then log in:
+
+```bash
+argocd login localhost:8080 --insecure --username admin --password $(make argocd-password)
+```
+
+### 2. Run the bootstrap script
 
 ```bash
 ./scripts/start-homelab.sh
