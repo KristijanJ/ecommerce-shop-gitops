@@ -41,6 +41,9 @@ spec:
                 configMapKeyRef:
                   name: ecommerce-fe
                   key: redis_port
+            # No OTLP endpoint in the cluster yet, so keep the OpenTelemetry SDK off.
+            - name: "OTEL_SDK_DISABLED"
+              value: "true"
           ports:
             - containerPort: 3000
           livenessProbe:
