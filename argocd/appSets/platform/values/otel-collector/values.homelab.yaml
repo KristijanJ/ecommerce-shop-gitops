@@ -29,6 +29,13 @@ ports:
     enabled: false
 
 config:
+  connectors:
+    # Turns traces into request-count and latency histograms. The histograms carry
+    # trace-ID exemplars, which is what Grafana's "View trace" link on a graph uses.
+    # The JS SDK doesn't attach exemplars to the apps' own metrics.
+    spanmetrics:
+      exemplars:
+        enabled: true
   exporters:
     otlp/tempo:
       endpoint: tempo.monitoring.svc.cluster.local:4317
@@ -43,12 +50,12 @@ config:
       traces:
         receivers: [otlp]
         processors: [memory_limiter, batch]
-        exporters: [otlp/tempo]
+        exporters: [otlp/tempo, spanmetrics]
       logs:
         receivers: [otlp]
         processors: [memory_limiter, batch]
         exporters: [otlphttp/loki]
       metrics:
-        receivers: [otlp]
+        receivers: [otlp, spanmetrics]
         processors: [memory_limiter, batch]
         exporters: [otlphttp/prometheus]
