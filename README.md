@@ -35,7 +35,7 @@ Part of a multi-repo project:
 │  │  └──────────────────────┘  └──────────────────────────┘ │    │
 │  │  ┌─────────────────────────────────────────────────────┐ │    │
 │  │  │                  monitoring                         │ │    │
-│  │  │      Prometheus · Grafana · Loki · Promtail         │ │    │
+│  │  │   Prometheus · Grafana · Loki · Tempo · Collector   │ │    │
 │  │  └─────────────────────────────────────────────────────┘ │    │
 │  │  ┌─────────────────────────────────────────────────────┐ │    │
 │  │  │        vault · external-secrets · argocd            │ │    │
@@ -63,7 +63,9 @@ Part of a multi-repo project:
 | **Vault**                     | Secrets backend            | Dev mode in homelab, swappable to AWS Secrets Manager |
 | **External Secrets Operator** | Secret sync                | Pulls from Vault → Kubernetes Secrets                 |
 | **kube-prometheus-stack**     | Metrics & dashboards       | Prometheus + Grafana + Alertmanager                   |
-| **Loki + Promtail**           | Log aggregation            | Promtail DaemonSet ships pod logs to Loki             |
+| **Loki**                      | Log aggregation            | Receives logs from the collector over OTLP            |
+| **Tempo**                     | Tracing backend            | Single-binary mode, 3 day retention, 5Gi PVC          |
+| **OpenTelemetry Collector**   | Telemetry pipeline         | Apps push OTLP; fans out to Tempo, Loki, Prometheus   |
 | **Metrics Server**            | Resource metrics           | Required for HPA                                      |
 
 ---
@@ -132,18 +134,23 @@ When moving to AWS: swap the `ClusterSecretStore` backend from Vault to AWS Secr
 
 ## Observability
 
-The full PLG stack (Prometheus + Loki + Grafana) is deployed via ArgoCD:
+Prometheus, Loki, Tempo, an OpenTelemetry Collector and Grafana are deployed via ArgoCD. The apps push traces, metrics and logs over OTLP to the collector (`opentelemetry-collector.monitoring:4318`), which forwards them:
 
-- **Prometheus** scrapes cluster and node metrics
-- **Promtail** (DaemonSet) ships pod logs from every node to Loki
-- **Grafana** provides a single dashboard for both metrics and logs
-- Both apps use **structured JSON logging** via [pino](https://getpino.io) — every log line is a JSON object Loki can parse and filter
+- **Traces** go to Tempo
+- **Logs** go to Loki, through its OTLP endpoint
+- **Metrics** go to Prometheus, through its OTLP receiver. Prometheus also scrapes cluster and node metrics
+- **Grafana** has Prometheus, Loki and Tempo as datasources, so one UI covers metrics, logs and traces
+- Both apps log with [pino](https://getpino.io). Logs are JSON by default
+
+The apps set `OTEL_SERVICE_NAME` (`ecommerce-be`, `ecommerce-fe`) and `OTEL_EXPORTER_OTLP_ENDPOINT` in their deployments. Their network policies allow egress to the `monitoring` namespace on 4317 and 4318.
+
+Promtail was removed, so logs from other pods (system and platform components) are no longer collected. Only what the apps send through the collector reaches Loki.
 
 Query logs in Grafana → Explore → Loki datasource:
 
 ```logql
-{namespace="homelab-backend"} | json | level="error"
-{namespace="homelab-frontend"} | json | msg=~".*payment.*"
+{service_name="ecommerce-be"}
+{service_name="ecommerce-fe"}
 ```
 
 ---
