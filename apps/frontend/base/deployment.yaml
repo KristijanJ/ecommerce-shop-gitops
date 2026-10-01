@@ -45,6 +45,14 @@ spec:
               value: "ecommerce-fe"
             - name: "OTEL_EXPORTER_OTLP_ENDPOINT"
               value: "http://opentelemetry-collector.monitoring.svc.cluster.local:4318"
+            # Give each pod its own metric series. Without an instance id, all replicas
+            # write to the same series and rate() counts every counter reset.
+            - name: "POD_NAME"
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: "OTEL_RESOURCE_ATTRIBUTES"
+              value: "service.instance.id=$(POD_NAME)"
           ports:
             - containerPort: 3000
           livenessProbe:
