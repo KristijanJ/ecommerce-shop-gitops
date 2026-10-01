@@ -39,7 +39,8 @@ grafana:
       exemplarTraceIdDestinations:
         datasourceUid: tempo
         traceIdLabelName: trace_id
-        urlDisplayLabel: "Trace: $${__value.raw}"
+        # No colon in the label: the chart writes it unquoted, and "Trace: ..." breaks the YAML.
+        urlDisplayLabel: "View trace"
   affinity:
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
