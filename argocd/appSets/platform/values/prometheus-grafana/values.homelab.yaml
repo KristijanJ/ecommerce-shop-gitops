@@ -22,6 +22,12 @@ prometheus:
           resources:
             requests:
               storage: 5Gi
+    # The OTel collector pushes app metrics here over OTLP.
+    enableOTLPReceiver: true
+    otlp:
+      # Keep service.name as a label so queries can filter on service_name="ecommerce-be".
+      promoteResourceAttributes:
+        - service.name
 
 grafana:
   affinity:
@@ -43,6 +49,11 @@ grafana:
     - name: Loki
       type: loki
       url: http://loki.monitoring.svc.cluster.local:3100
+      access: proxy
+      isDefault: false
+    - name: Tempo
+      type: tempo
+      url: http://tempo.monitoring.svc.cluster.local:3200
       access: proxy
       isDefault: false
 

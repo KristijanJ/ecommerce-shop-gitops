@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: otel-collector-appset
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  generators:
+    - list:
+        elements:
+          - env: homelab
+            url: https://kubernetes.default.svc
+            repoURL: https://open-telemetry.github.io/opentelemetry-helm-charts
+            targetRevision: 0.174.0
+          # - env: prod
+          #   url: https://prod-cluster-url
+  template:
+    metadata:
+      name: "{{env}}-otel-collector"
+    spec:
+      project: default
+      sources:
+        - chart: opentelemetry-collector
+          repoURL: "{{repoURL}}"
+          targetRevision: "{{targetRevision}}"
+          helm:
+            releaseName: opentelemetry-collector
+            valueFiles:
+              - $values/argocd/appSets/platform/values/otel-collector/values.{{env}}.yaml
+        - repoURL: https://github.com/KristijanJ/ecommerce-shop-gitops.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: "{{url}}"
+        namespace: monitoring
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: promtail-appset
+  name: tempo-appset
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "0"
@@ -11,23 +11,23 @@ spec:
         elements:
           - env: homelab
             url: https://kubernetes.default.svc
-            repoURL: https://grafana.github.io/helm-charts
-            targetRevision: 6.17.1
+            repoURL: https://grafana-community.github.io/helm-charts
+            targetRevision: 3.1.0
           # - env: prod
           #   url: https://prod-cluster-url
   template:
     metadata:
-      name: "{{env}}-promtail"
+      name: "{{env}}-tempo"
     spec:
       project: default
       sources:
-        - chart: promtail
+        - chart: tempo
           repoURL: "{{repoURL}}"
           targetRevision: "{{targetRevision}}"
           helm:
-            releaseName: promtail
+            releaseName: tempo
             valueFiles:
-              - $values/argocd/appSets/platform/values/promtail/values.{{env}}.yaml
+              - $values/argocd/appSets/platform/values/tempo/values.{{env}}.yaml
         - repoURL: https://github.com/KristijanJ/ecommerce-shop-gitops.git
           targetRevision: HEAD
           ref: values

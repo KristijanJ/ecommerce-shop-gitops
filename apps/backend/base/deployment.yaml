@@ -52,9 +52,10 @@ spec:
                 secretKeyRef:
                   name: jwt-secret
                   key: jwt-secret
-            # No OTLP endpoint in the cluster yet, so keep the OpenTelemetry SDK off.
-            - name: "OTEL_SDK_DISABLED"
-              value: "true"
+            - name: "OTEL_SERVICE_NAME"
+              value: "ecommerce-be"
+            - name: "OTEL_EXPORTER_OTLP_ENDPOINT"
+              value: "http://opentelemetry-collector.monitoring.svc.cluster.local:4318"
           ports:
             - containerPort: 3000
           livenessProbe:
