@@ -27,6 +27,7 @@ spec:
         namespace: '{{env}}-backend'
       syncPolicy:
         automated:
+          enabled: false
           prune: true
           selfHeal: true
         syncOptions:

@@ -11,12 +11,32 @@ spec:
     spec:
       containers:
         - name: ecommerce-shop-be-migrations
-          image: kristijan92/ecommerce-shop-be:1.1.2
-          command: ["npx", "prisma", "migrate", "deploy"]
+          image: kristijan92/ecommerce-shop-be:1.1.4
+          command: ["npm", "run", "migration:run:prod"]
           env:
-            - name: "DATABASE_URL"
+            - name: "DB_HOST"
               valueFrom:
                 secretKeyRef:
                   name: db-credentials
                   key: db-host
+            - name: "DB_PORT"
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: db-port
+            - name: "DB_USER"
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: db-user
+            - name: "DB_PASS"
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: db-pass
+            - name: "DB_DATABASE"
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: db-database
       restartPolicy: OnFailure

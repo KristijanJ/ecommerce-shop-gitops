@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
         - name: ecommerce-be
-          image: kristijan92/ecommerce-shop-be:1.1.3
+          image: kristijan92/ecommerce-shop-be:1.1.4
           resources:
             requests:
               memory: "128Mi"
@@ -22,6 +22,16 @@ spec:
               memory: "256Mi"
               cpu: "500m"
           env:
+            - name: "DB_HOST"
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: db-host
+            - name: "DB_PORT"
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: db-port
             - name: "DB_USER"
               valueFrom:
                 secretKeyRef:
@@ -32,16 +42,11 @@ spec:
                 secretKeyRef:
                   name: db-credentials
                   key: db-pass
-            - name: "DB_NAME"
+            - name: "DB_DATABASE"
               valueFrom:
                 secretKeyRef:
                   name: db-credentials
-                  key: db-name
-            - name: "DATABASE_URL"
-              valueFrom:
-                secretKeyRef:
-                  name: db-credentials
-                  key: db-host
+                  key: db-database
             - name: "JWT_SECRET"
               valueFrom:
                 secretKeyRef:
