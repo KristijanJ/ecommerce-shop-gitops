@@ -37,7 +37,7 @@ grafana:
     datasources:
       # Metric exemplar -> trace
       exemplarTraceIdDestinations:
-        datasourceUid: tempo
+        datasourceUid: P214B5B846CF3925F
         traceIdLabelName: trace_id
         # No colon in the label: the chart writes it unquoted, and "Trace: ..." breaks the YAML.
         urlDisplayLabel: "View trace"
@@ -59,8 +59,9 @@ grafana:
   additionalDataSources:
     - name: Loki
       type: loki
-      # Fixed uids so the datasources can link to each other.
-      uid: loki
+      # Grafana can't change the uid of an already-provisioned datasource ("data source not found"),
+      # so these keep the uids it generated originally. The links below refer to them.
+      uid: P8E80F9AEF21F6940
       url: http://loki.monitoring.svc.cluster.local:3100
       access: proxy
       isDefault: false
@@ -71,18 +72,18 @@ grafana:
             matcherType: label
             matcherRegex: trace_id
             url: "$${__value.raw}"
-            datasourceUid: tempo
+            datasourceUid: P214B5B846CF3925F
             urlDisplayLabel: "Trace: $${__value.raw}"
     - name: Tempo
       type: tempo
-      uid: tempo
+      uid: P214B5B846CF3925F
       url: http://tempo.monitoring.svc.cluster.local:3200
       access: proxy
       isDefault: false
       jsonData:
         # Trace -> logs: jump from a span to the logs of the same trace.
         tracesToLogsV2:
-          datasourceUid: loki
+          datasourceUid: P8E80F9AEF21F6940
           customQuery: true
           query: '{$${__tags}} | trace_id = "$${__trace.traceId}"'
           tags:
