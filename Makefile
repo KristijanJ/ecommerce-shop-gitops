@@ -121,10 +121,11 @@ argocd-status: ## Show ArgoCD application sync status
 vault-seed: ## Seed Vault with all secrets (DB credentials + JWT secret)
 	@echo "$(CYAN)Seeding Vault with DB credentials...$(NC)"
 	@kubectl exec -n vault vault-0 -- vault kv put secret/db \
-		db-name=ecommerce \
+		db-host="192.168.0.30" \
+		db-port=5432 \
 		db-user=postgres \
 		db-pass=postgres \
-		db-host="postgresql://postgres:postgres@192.168.0.30:5432/ecommerce?schema=public"
+		db-database=ecommerce
 	@echo "$(GREEN)$(CHECK) Vault DB credentials seeded$(NC)"
 	@echo "$(CYAN)Seeding Vault with JWT secret...$(NC)"
 	@kubectl exec -n vault vault-0 -- vault kv put secret/jwt \
