@@ -13,6 +13,11 @@ spec:
             url: https://kubernetes.default.svc
           # - env: prod
           #   url: https://prod-cluster-url
+  # Let manual changes to the sync policy (e.g. disabling auto-sync in the UI
+  # before a rollback) survive instead of being reset to this template.
+  ignoreApplicationDifferences:
+    - jsonPointers:
+        - /spec/syncPolicy
   template:
     metadata:
       name: '{{env}}-backend'
@@ -27,7 +32,7 @@ spec:
         namespace: '{{env}}-backend'
       syncPolicy:
         automated:
-          enabled: false
+          enabled: true
           prune: true
           selfHeal: true
         syncOptions:
