@@ -73,6 +73,12 @@ ports:
     enabled: false
 
 config:
+  receivers:
+    file_log:
+      exclude:
+      - /var/log/pods/monitoring_opentelemetry-collector*_*/opentelemetry-collector/*.log
+      - /var/log/pods/homelab-backend_homelab-ecommerce-be-*/ecommerce-be/*.log
+      - /var/log/pods/homelab-frontend_homelab-ecommerce-fe-*/ecommerce-fe/*.log
   connectors:
     # Turns traces into request-count and latency histograms. The histograms carry
     # trace-ID exemplars, which is what Grafana's "View trace" link on a graph uses.
