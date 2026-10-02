@@ -4,6 +4,12 @@
 #   metrics -> Prometheus (OTLP receiver, enabled in the prometheus-grafana values)
 mode: daemonset
 
+service:
+  # Enable the creation of a Service.
+  # By default, it's enabled on mode != daemonset.
+  # However, to enable it on mode = daemonset, its creation must be explicitly enabled
+  enabled: true
+
 image:
   repository: otel/opentelemetry-collector-k8s
   tag: "0.161.0"
