@@ -2,12 +2,48 @@
 #   traces  -> Tempo
 #   logs    -> Loki (OTLP endpoint)
 #   metrics -> Prometheus (OTLP receiver, enabled in the prometheus-grafana values)
-mode: deployment
-replicaCount: 1
+mode: daemonset
 
 image:
   repository: otel/opentelemetry-collector-k8s
   tag: "0.161.0"
+
+presets:
+  logsCollection:
+    enabled: true
+  hostMetrics:
+    enabled: true
+  kubernetesAttributes:
+    enabled: true
+    extractAllPodLabels: true
+    extractAllPodAnnotations: true
+  kubeletMetrics:
+    enabled: true
+    useK8sEventsReceiver: true
+  kubernetesObjects:
+    enabled: true
+    watch: true
+    core:
+      enabled: true
+    rbac:
+      enabled: true
+    storage:
+      enabled: true
+    networking:
+      enabled: true
+    autoscaling:
+      enabled: true
+      # VPA resources: verticalpodautoscalers (requires VPA CRD to be installed)
+      vpa:
+        enabled: false
+    policy:
+      enabled: true
+    apiExtensions:
+      enabled: true
+    events:
+      enabled: true
+  clusterMetrics:
+    enabled: false
 
 resources:
   requests:
