@@ -86,14 +86,14 @@ config:
   service:
     pipelines:
       traces:
-        receivers: [otlp_grpc]
+        receivers: [otlp]
         processors: [memory_limiter, batch]
         exporters: [otlp_grpc/tempo, spanmetrics]
       logs:
-        receivers: [otlp_grpc]
+        receivers: [otlp]
         processors: [memory_limiter, batch]
         exporters: [otlp_http/loki]
       metrics:
-        receivers: [otlp_grpc, spanmetrics]
+        receivers: [otlp, spanmetrics]
         processors: [memory_limiter, batch]
         exporters: [otlp_http/prometheus]
