@@ -19,6 +19,8 @@ presets:
     extractAllPodAnnotations: true
   kubeletMetrics:
     enabled: true
+  kubernetesEvents:
+    enabled: true
     useK8sEventsReceiver: true
   kubernetesObjects:
     enabled: true
@@ -73,25 +75,25 @@ config:
       exemplars:
         enabled: true
   exporters:
-    otlp/tempo:
+    otlp_grpc/tempo:
       endpoint: tempo.monitoring.svc.cluster.local:4317
       tls:
         insecure: true
-    otlphttp/loki:
+    otlp_http/loki:
       endpoint: http://loki.monitoring.svc.cluster.local:3100/otlp
-    otlphttp/prometheus:
+    otlp_http/prometheus:
       endpoint: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090/api/v1/otlp
   service:
     pipelines:
       traces:
-        receivers: [otlp]
+        receivers: [otlp_grpc]
         processors: [memory_limiter, batch]
-        exporters: [otlp/tempo, spanmetrics]
+        exporters: [otlp_grpc/tempo, spanmetrics]
       logs:
-        receivers: [otlp]
+        receivers: [otlp_grpc]
         processors: [memory_limiter, batch]
-        exporters: [otlphttp/loki]
+        exporters: [otlp_http/loki]
       metrics:
-        receivers: [otlp, spanmetrics]
+        receivers: [otlp_grpc, spanmetrics]
         processors: [memory_limiter, batch]
-        exporters: [otlphttp/prometheus]
+        exporters: [otlp_http/prometheus]
