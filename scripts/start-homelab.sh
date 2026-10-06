@@ -110,10 +110,11 @@ echo -e "${GREEN}Vault token secret created!${NC}\n"
 
 echo -e "${CYAN}Seeding Vault with DB credentials...${NC}"
 kubectl exec -n vault vault-0 -- vault kv put secret/db \
-    db-name=ecommerce \
+    db-host="$DB_HOST" \
+    db-port=5432 \
     db-user=postgres \
     db-pass=postgres \
-    db-host="postgresql://postgres:postgres@$DB_HOST:5432/ecommerce?schema=public"
+    db-database=ecommerce
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to seed Vault with DB credentials${NC}"
     exit 1
