@@ -1,0 +1,52 @@
+replicas: 1
+
+persistence:
+  enabled: true
+  storageClassName: gp3
+  size: 5Gi
+
+tempo:
+  registry: docker.io
+  repository: grafana/tempo
+  tag: "3.1.0"
+  pullPolicy: IfNotPresent
+
+  updateStrategy: RollingUpdate
+  reportingEnabled: false
+  retention: 72h
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 50m
+    limits:
+      memory: 512Mi
+      cpu: 500m
+
+  storage:
+    trace:
+      # tempo storage backend.
+      # Refers to: https://grafana.com/docs/tempo/latest/configuration/#storage
+      ## Use s3 for example
+      # backend: s3
+      # store traces in s3
+      # s3:
+      #   bucket: <your s3 bucket>                        # store traces in this bucket
+      #   endpoint: s3.dualstack.us-east-2.amazonaws.com  # api endpoint
+      #   access_key: ...                                 # optional. access key when using static credentials.
+      #   secret_key: ...                                 # optional. secret key when using static credentials.
+      #   insecure: false                                 # optional. enable if endpoint is http
+      backend: local
+      local:
+        path: /var/tempo/traces
+      wal:
+        path: /var/tempo/wal
+  # this configuration will listen on all ports and protocols that tempo is capable of.
+  # the receives all come from the OpenTelemetry collector.  more configuration information can
+  # be found there: https://github.com/open-telemetry/opentelemetry-collector/tree/master/receiver
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+        http:
+          endpoint: "0.0.0.0:4318"

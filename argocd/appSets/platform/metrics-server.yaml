@@ -13,7 +13,7 @@ spec:
           matchExpressions:
             - key: env
               operator: In
-              values: [homelab]
+              values: [homelab, aws-prod]
         values:
           repoURL: https://kubernetes-sigs.github.io/metrics-server/
           targetRevision: 3.13.0

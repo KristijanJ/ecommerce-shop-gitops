@@ -3,3 +3,4 @@ kind: Kustomization
 
 resources:
   - cluster-secret-store.yaml
+  - storage-class-gp3.yaml
