@@ -17,11 +17,11 @@ main() {
         "homelab")
             install_argocd_homelab
             ;;
-        "eks")
-            install_argocd_eks
+        "aws-prod")
+            install_argocd_aws-prod
             ;;
         *)
-            echo -e "${RED}Unknown command. Usage: ./install-argo-cd [kind|homelab|eks]${NC}"
+            echo -e "${RED}Unknown command. Usage: ./install-argo-cd [kind|homelab|aws-prod]${NC}"
             ;;
     esac
 }
@@ -44,8 +44,11 @@ install_argocd_homelab() {
     echo -e "${GREEN}ArgoCD installed!${NC}"
 }
 
-install_argocd_eks() {
-    echo -e "${YELLOW}Not yet implemented...${NC}"
+install_argocd_aws-prod() {
+    echo -e "${YELLOW}Installing ArgoCD on AWS PROD cluster...${NC}"
+    kubectl create namespace argocd
+    kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+    echo -e "${GREEN}ArgoCD installed!${NC}"
 }
 
 main "$@"

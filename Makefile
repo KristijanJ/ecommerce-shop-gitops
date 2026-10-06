@@ -89,6 +89,22 @@ start-homelab: ## Start the full homelab environment (cluster + ArgoCD + monitor
 	@echo "$(GREEN)$(CHECK) Homelab environment ready$(NC)"
 
 # ------------------------------------------------------------------------------
+### EKS development commands:
+# ------------------------------------------------------------------------------
+
+.PHONY: start-aws-prod
+start-aws-prod: ## Start the full AWS PROD environment (cluster + ArgoCD + monitoring)
+	@echo "$(CYAN)Starting aws-prod environment...$(NC)"
+	@./scripts/start-aws-prod.sh
+	@echo "$(GREEN)$(CHECK) AWS PROD environment ready$(NC)"
+
+.PHONY: teardown-aws-prod
+teardown-aws-prod: ## Remove everything ArgoCD deployed on AWS prod, run before terraform destroy
+	@echo "$(CYAN)Tearing down aws-prod GitOps resources...$(NC)"
+	@./scripts/teardown-aws-prod.sh
+	@echo "$(GREEN)$(CHECK) aws-prod GitOps resources removed$(NC)"
+
+# ------------------------------------------------------------------------------
 ### ArgoCD commands:
 # ------------------------------------------------------------------------------
 
