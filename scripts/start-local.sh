@@ -46,6 +46,18 @@ echo -e "${CYAN}Waiting for cluster to be ready...${NC}"
 sleep 5
 
 # ------------------------------------------
+# Confirm kubectl context (kind create sets it to the new cluster)
+# ------------------------------------------
+CURRENT_CONTEXT="$(kubectl config current-context 2>/dev/null)"
+echo -e "${CYAN}Current kubectl context: ${BOLD}${GREEN}${CURRENT_CONTEXT:-none}${NC}"
+read -p "$(echo -e "${CYAN}Continue? [y/N]: ${NC}")" CONFIRM
+if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
+    echo -e "${YELLOW}Aborted${NC}"
+    exit 1
+fi
+echo ""
+
+# ------------------------------------------
 # Step 2: Install ArgoCD
 # ------------------------------------------
 echo -e "${BOLD}${BLUE}[2/5] Installing ArgoCD...${NC}"
@@ -67,6 +79,11 @@ echo ""
 # Step 3: Deploy Platform
 # ------------------------------------------
 echo -e "${BOLD}${BLUE}[3/5] Deploying Platform...${NC}"
+kubectl apply -f "$SCRIPT_DIR/../argocd/bootstrap/00-cluster-homelab.yaml"
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Failed to apply cluster secret${NC}"
+    exit 1
+fi
 kubectl apply -f "$SCRIPT_DIR/../argocd/bootstrap/01-root-platform.yaml"
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to apply root-platform${NC}"

@@ -7,24 +7,25 @@ metadata:
     argocd.argoproj.io/sync-wave: "0"
 spec:
   generators:
-    - list:
-        elements:
-          - env: homelab
-            url: https://kubernetes.default.svc
-          # - env: prod
-          #   url: https://prod-cluster-url
+    # Matches clusters by the "env" label on the cluster Secret (see argocd/bootstrap/00-cluster-*.yaml)
+    - clusters:
+        selector:
+          matchExpressions:
+            - key: env
+              operator: In
+              values: [homelab]
   template:
     metadata:
-      name: "{{env}}-infrastructure"
+      name: "{{metadata.labels.env}}-infrastructure"
     spec:
       project: default
       source:
         repoURL: https://github.com/KristijanJ/ecommerce-shop-gitops.git
         targetRevision: HEAD
-        path: apps/infrastructure/envs/{{env}}
+        path: apps/infrastructure/envs/{{metadata.labels.env}}
       destination:
-        server: "{{url}}"
-        namespace: "{{env}}-infrastructure"
+        server: "{{server}}"
+        namespace: "{{metadata.labels.env}}-infrastructure"
       syncPolicy:
         automated:
           prune: true

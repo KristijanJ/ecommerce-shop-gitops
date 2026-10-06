@@ -74,13 +74,16 @@ Stateless services (frontend and backend) run in Kubernetes. Stateful services (
 
 ### App of Apps
 
-ArgoCD is bootstrapped with two root Applications:
+ArgoCD is bootstrapped with a cluster Secret and two root Applications:
 
 ```text
 argocd/bootstrap/
+├── 00-cluster-<env>.yaml   → labels the local cluster with env=<env> (homelab or eks)
 ├── 01-root-platform.yaml   → watches argocd/appSets/platform/  (Traefik, Vault, Prometheus, Loki, ...)
 └── 02-root-apps.yaml       → watches argocd/appSets/application/ (frontend, backend, infrastructure)
 ```
+
+Each cluster runs its own ArgoCD. The ApplicationSets use the `clusters` generator and select clusters by the `env` label on the cluster Secret, so the same appset files work in every cluster. The local cluster has no Secret by default, so `00-cluster-<env>.yaml` must be applied before the root Applications. Without it the generators match nothing and `prune` removes the Applications.
 
 Any change pushed to this repo is picked up automatically, with no manual `kubectl apply` needed after the initial bootstrap.
 
