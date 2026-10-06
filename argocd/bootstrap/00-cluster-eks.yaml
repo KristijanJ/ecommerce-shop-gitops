@@ -1,0 +1,16 @@
+# Registers the local (EKS) cluster in ArgoCD with an env label so ApplicationSets can select it.
+# Apply this before 01-root-platform.yaml. Also add "eks" to the appset selectors once the
+# values.eks.yaml files and apps/*/envs/eks overlays exist.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cluster-local
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+    env: eks
+type: Opaque
+stringData:
+  name: in-cluster
+  server: https://kubernetes.default.svc
+  config: '{"tlsClientConfig":{"insecure":false}}'

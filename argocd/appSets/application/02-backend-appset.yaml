@@ -7,12 +7,13 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
 spec:
   generators:
-    - list:
-        elements:
-          - env: homelab
-            url: https://kubernetes.default.svc
-          # - env: prod
-          #   url: https://prod-cluster-url
+    # Matches clusters by the "env" label on the cluster Secret (see argocd/bootstrap/00-cluster-*.yaml)
+    - clusters:
+        selector:
+          matchExpressions:
+            - key: env
+              operator: In
+              values: [homelab]
   # Let manual changes to the sync policy (e.g. disabling auto-sync in the UI
   # before a rollback) survive instead of being reset to this template.
   ignoreApplicationDifferences:
@@ -20,16 +21,16 @@ spec:
         - /spec/syncPolicy
   template:
     metadata:
-      name: '{{env}}-backend'
+      name: '{{metadata.labels.env}}-backend'
     spec:
       project: default
       source:
         repoURL: https://github.com/KristijanJ/ecommerce-shop-gitops.git
         targetRevision: HEAD
-        path: apps/backend/envs/{{env}}
+        path: apps/backend/envs/{{metadata.labels.env}}
       destination:
-        server: '{{url}}'
-        namespace: '{{env}}-backend'
+        server: '{{server}}'
+        namespace: '{{metadata.labels.env}}-backend'
       syncPolicy:
         automated:
           enabled: true

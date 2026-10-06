@@ -1,0 +1,15 @@
+# Registers the local cluster in ArgoCD with an env label so ApplicationSets can select it.
+# Apply this BEFORE merging appset changes that use the clusters generator.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cluster-local
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+    env: homelab
+type: Opaque
+stringData:
+  name: in-cluster
+  server: https://kubernetes.default.svc
+  config: '{"tlsClientConfig":{"insecure":false}}'

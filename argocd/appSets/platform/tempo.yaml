@@ -7,32 +7,34 @@ metadata:
     argocd.argoproj.io/sync-wave: "0"
 spec:
   generators:
-    - list:
-        elements:
-          - env: homelab
-            url: https://kubernetes.default.svc
-            repoURL: https://grafana-community.github.io/helm-charts
-            targetRevision: 3.1.0
-          # - env: prod
-          #   url: https://prod-cluster-url
+    # Matches clusters by the "env" label on the cluster Secret (see argocd/bootstrap/00-cluster-*.yaml)
+    - clusters:
+        selector:
+          matchExpressions:
+            - key: env
+              operator: In
+              values: [homelab]
+        values:
+          repoURL: https://grafana-community.github.io/helm-charts
+          targetRevision: 3.1.0
   template:
     metadata:
-      name: "{{env}}-tempo"
+      name: "{{metadata.labels.env}}-tempo"
     spec:
       project: default
       sources:
         - chart: tempo
-          repoURL: "{{repoURL}}"
-          targetRevision: "{{targetRevision}}"
+          repoURL: "{{values.repoURL}}"
+          targetRevision: "{{values.targetRevision}}"
           helm:
             releaseName: tempo
             valueFiles:
-              - $values/argocd/appSets/platform/values/tempo/values.{{env}}.yaml
+              - $values/argocd/appSets/platform/values/tempo/values.{{metadata.labels.env}}.yaml
         - repoURL: https://github.com/KristijanJ/ecommerce-shop-gitops.git
           targetRevision: HEAD
           ref: values
       destination:
-        server: "{{url}}"
+        server: "{{server}}"
         namespace: monitoring
       syncPolicy:
         automated:
