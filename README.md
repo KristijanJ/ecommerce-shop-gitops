@@ -58,7 +58,7 @@ Stateless services (frontend and backend) run in Kubernetes. Stateful services (
 | Component                     | Purpose                    | Notes                                                 |
 | ----------------------------- | -------------------------- | ----------------------------------------------------- |
 | ArgoCD                        | GitOps continuous delivery | App of Apps pattern                                   |
-| Kustomize                     | Environment overlays       | `base/` + `envs/homelab/` + `envs/prod/`              |
+| Kustomize                     | Environment overlays       | `base/` + `envs/homelab/`                             |
 | Traefik                       | Ingress controller         | DaemonSet on control-plane, k3s svclb for LB IPs      |
 | Vault                         | Secrets backend            | Dev mode in homelab, swappable to AWS Secrets Manager |
 | External Secrets Operator     | Secret sync                | Pulls from Vault into Kubernetes Secrets              |
@@ -78,7 +78,7 @@ ArgoCD is bootstrapped with a cluster Secret and two root Applications:
 
 ```text
 argocd/bootstrap/
-├── 00-cluster-<env>.yaml   → labels the local cluster with env=<env> (homelab or eks)
+├── 00-cluster-<env>.yaml   → labels the local cluster with env=<env> (homelab or aws-prod)
 ├── 01-root-platform.yaml   → watches argocd/appSets/platform/  (Traefik, Vault, Prometheus, Loki, ...)
 └── 02-root-apps.yaml       → watches argocd/appSets/application/ (frontend, backend, infrastructure)
 ```
@@ -94,13 +94,11 @@ apps/
 ├── backend/
 │   ├── base/               # Environment-agnostic manifests
 │   └── envs/
-│       ├── homelab/        # Proxmox k3s patches (ingress host, network policies)
-│       └── prod/           # EKS-specific patches
+│       └── homelab/        # Proxmox k3s patches (ingress host, network policies)
 └── frontend/
     ├── base/
     └── envs/
-        ├── homelab/        # Proxmox k3s patches (API URL, ingress host, network policies)
-        └── prod/
+        └── homelab/        # Proxmox k3s patches (API URL, ingress host, network policies)
 ```
 
 `namePrefix: homelab-` in the homelab overlay means all resources are namespaced by environment, so multiple environments can coexist in the same cluster.
