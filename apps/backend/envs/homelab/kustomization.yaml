@@ -6,4 +6,6 @@ resources:
   - ingress.yaml
 namePrefix: homelab-
 nameSuffix: ""
-images: []
+images:
+  - name: kristijan92/ecommerce-shop-be
+    newTag: 1.1.4

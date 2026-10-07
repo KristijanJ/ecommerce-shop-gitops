@@ -11,7 +11,7 @@ spec:
     spec:
       containers:
         - name: ecommerce-shop-be-migrations
-          image: kristijan92/ecommerce-shop-be:1.1.4
+          image: kristijan92/ecommerce-shop-be
           command: ["npm", "run", "migration:run:prod"]
           env:
             - name: "DB_HOST"
