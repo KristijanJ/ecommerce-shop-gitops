@@ -1,21 +1,17 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-
 resources:
   - ../../base
   - network-policies.yaml
   - config-map.yaml
   - ingress.yaml
-
 namePrefix: homelab-
 nameSuffix: ""
-
 patches:
   - path: api-url-patch.yaml
     target:
       kind: Deployment
       name: ecommerce-fe
-
 images:
   - name: kristijan92/ecommerce-shop-fe
-    newTag: 1.1.6
+    newTag: 04be6b4
