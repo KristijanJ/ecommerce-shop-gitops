@@ -12,10 +12,6 @@ BLUE='\033[0;34m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
-# Cluster name
-CLUSTER_NAME="ecommerce-cluster-prod"
-DB_HOST=192.168.0.30
-
 echo -e "${BOLD}${CYAN}============================================${NC}"
 echo -e "${BOLD}${CYAN}  Starting AWS PROD E-commerce Environment${NC}"
 echo -e "${BOLD}${CYAN}============================================${NC}\n"
@@ -72,6 +68,10 @@ echo ""
 echo -e "${CYAN}Waiting for platform to be ready...${NC}"
 echo -e "${CYAN}(This may take a few minutes while Helm charts are pulled and deployed)${NC}\n"
 
+# kubectl wait fails right away if the pods do not exist yet, so wait for them to appear first
+until kubectl get pods -l app.kubernetes.io/instance=external-secrets -n external-secrets 2>/dev/null | grep -q external-secrets; do
+    sleep 5
+done
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=external-secrets -n external-secrets --timeout=180s
 if [ $? -ne 0 ]; then
     echo -e "${YELLOW}Warning: External Secrets may not be fully ready. Continuing anyway...${NC}"
@@ -110,7 +110,6 @@ echo -e "${BOLD}${GREEN}========================================${NC}\n"
 echo -e "${BOLD}${CYAN}Useful commands:${NC}"
 echo -e "  • View ArgoCD password:   ${BLUE}make argocd-password${NC}"
 echo -e "  • Port-forward ArgoCD UI: ${BLUE}make argocd-ui${NC}"
-echo -e "  • Port-forward Vault UI:  ${BLUE}make vault-ui${NC}"
 echo -e "  • Port-forward Grafana:   ${BLUE}make grafana-ui${NC}"
 echo -e "  • View all pods:          ${BLUE}make pods${NC}\n"
 
