@@ -7,3 +7,7 @@ resources:
 
 namePrefix: local-
 nameSuffix: ""
+
+images:
+  - name: kristijan92/ecommerce-shop-be
+    newTag: 1.1.4

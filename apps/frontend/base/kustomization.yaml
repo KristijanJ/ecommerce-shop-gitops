@@ -6,6 +6,3 @@ resources:
   - hpa.yaml
   - pdb.yaml
   - secret-jwt.yaml
-images:
-  - name: kristijan92/ecommerce-shop-fe
-    newTag: 1.1.6

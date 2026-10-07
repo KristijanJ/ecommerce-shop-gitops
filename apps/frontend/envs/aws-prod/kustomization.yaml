@@ -27,3 +27,7 @@ patches:
       - op: replace
         path: /spec/data/0/remoteRef/key
         value: /ecommerce/prod/jwt
+
+images:
+  - name: kristijan92/ecommerce-shop-fe
+    newTag: 1.1.6

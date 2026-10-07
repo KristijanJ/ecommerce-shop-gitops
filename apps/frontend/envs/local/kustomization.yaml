@@ -17,3 +17,7 @@ patches:
     target:
       kind: ConfigMap
       name: ecommerce-fe
+
+images:
+  - name: kristijan92/ecommerce-shop-fe
+    newTag: 1.1.6
