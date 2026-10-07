@@ -30,6 +30,8 @@ if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
     echo -e "${YELLOW}Aborted${NC}"
     exit 1
 fi
+read -p "$(echo -e "${CYAN}AWS SSO profile (used for the Route53 records): ${NC}")" AWS_PROFILE
+export AWS_PROFILE
 echo ""
 
 # ------------------------------------------
@@ -79,10 +81,21 @@ echo ""
 # ------------------------------------------
 # Step 4: Deploy Applications
 # ------------------------------------------
-echo -e "${BOLD}${BLUE}[4/4] Deploying Applications...${NC}"
+echo -e "${BOLD}${BLUE}[3/4] Deploying Applications...${NC}"
 kubectl apply -f "$SCRIPT_DIR/../argocd/bootstrap/02-root-apps.yaml"
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to apply root-apps${NC}"
+    exit 1
+fi
+echo ""
+
+# ------------------------------------------
+# Step 4: Point the domain names at the ALB
+# ------------------------------------------
+echo -e "${BOLD}${BLUE}[4/4] Creating Route53 records...${NC}"
+"$SCRIPT_DIR/route53-alb.sh" upsert
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Failed to create the Route53 records, run: ./scripts/route53-alb.sh upsert${NC}"
     exit 1
 fi
 echo ""

@@ -13,7 +13,7 @@ spec:
           matchExpressions:
             - key: env
               operator: In
-              values: [homelab]
+              values: [homelab, aws-prod]
   # Let manual changes to the sync policy (e.g. disabling auto-sync in the UI
   # before a rollback) survive instead of being reset to this template.
   ignoreApplicationDifferences:
