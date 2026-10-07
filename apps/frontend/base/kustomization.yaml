@@ -7,5 +7,3 @@ resources:
   - hpa.yaml
   - pdb.yaml
   - secret-jwt.yaml
-  - ingress.yaml
-  - config-map.yaml

@@ -4,6 +4,8 @@ kind: Kustomization
 resources:
   - ../../base
   - network-policies.yaml
+  - config-map.yaml
+  - ingress.yaml
 
 namePrefix: homelab-
 nameSuffix: ""
@@ -13,11 +15,3 @@ patches:
     target:
       kind: Deployment
       name: ecommerce-fe
-  - path: config-map-patch.yaml
-    target:
-      kind: ConfigMap
-      name: ecommerce-fe
-  - path: ingress-patch.yaml
-    target:
-      kind: Ingress
-      name: ecommerce-fe-ingress

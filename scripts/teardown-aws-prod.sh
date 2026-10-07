@@ -27,6 +27,11 @@ if [[ "$CURRENT_CONTEXT" != *"$EXPECTED_CLUSTER"* ]]; then
 fi
 read -p "Delete all ArgoCD applications and their resources? [y/N]: " CONFIRM
 [[ "$CONFIRM" =~ ^[Yy]$ ]] || { echo "Aborted"; exit 1; }
+read -p "AWS SSO profile (used for the Route53 records): " AWS_PROFILE
+export AWS_PROFILE
+
+# Needs the Ingresses, so it runs before they are deleted
+"$SCRIPT_DIR/route53-alb.sh" delete || exit 1
 
 # The roots have a finalizer, so this cascades to the ApplicationSets, Applications and workloads
 make -C "$SCRIPT_DIR/.." clean || exit 1
@@ -35,6 +40,10 @@ make -C "$SCRIPT_DIR/.." clean || exit 1
 # and PersistentVolumes only after the EBS volume is deleted
 FAILED=0
 wait_empty "Applications" 300 "kubectl get applications -n argocd -o name" || FAILED=1
+
+# StatefulSet volume claims belong to neither the StatefulSet nor ArgoCD, so they outlive the apps.
+# The pods are gone by now, so deleting the claims releases the PVs and their EBS volumes.
+kubectl delete pvc --all -A --wait=false
 wait_empty "Ingresses (ALBs)" 600 "kubectl get ingress -A --no-headers" || FAILED=1
 wait_empty "LoadBalancer Services" 600 "kubectl get svc -A --no-headers | awk '\$3==\"LoadBalancer\"'" || FAILED=1
 wait_empty "PersistentVolumes (EBS)" 300 "kubectl get pv --no-headers" || FAILED=1

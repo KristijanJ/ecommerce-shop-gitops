@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+  - redis.yaml
+  - config-map.yaml
+  - ingress.yaml
+
+namePrefix: aws-prod-
+nameSuffix: ""
+
+patches:
+  - path: api-url-patch.yaml
+    target:
+      kind: Deployment
+      name: ecommerce-fe
+
+  # Read the JWT secret from AWS Secrets Manager instead of Vault
+  - target:
+      kind: ExternalSecret
+      name: jwt-secret
+    patch: |-
+      - op: replace
+        path: /spec/secretStoreRef/name
+        value: aws-secret-store
+      - op: replace
+        path: /spec/data/0/remoteRef/key
+        value: /ecommerce/prod/jwt

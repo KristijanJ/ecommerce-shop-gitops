@@ -9,4 +9,3 @@ resources:
   - secret-db.yaml
   - secret-jwt.yaml
   - pdb.yaml
-  - ingress.yaml
