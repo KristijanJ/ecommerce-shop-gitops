@@ -33,7 +33,7 @@ echo ""
 # ------------------------------------------
 # Step 1: Install ArgoCD
 # ------------------------------------------
-echo -e "${BOLD}${BLUE}[1/4] Installing ArgoCD...${NC}"
+echo -e "${BOLD}${BLUE}[1/5] Installing ArgoCD...${NC}"
 "$SCRIPT_DIR/install-argo-cd.sh" aws-prod
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to install ArgoCD${NC}"
@@ -52,7 +52,7 @@ echo ""
 # ------------------------------------------
 # Step 2: Deploy Platform
 # ------------------------------------------
-echo -e "${BOLD}${BLUE}[2/4] Deploying Platform...${NC}"
+echo -e "${BOLD}${BLUE}[2/5] Deploying Platform...${NC}"
 kubectl apply -f "$SCRIPT_DIR/../argocd/bootstrap/00-cluster-aws-prod.yaml"
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to apply cluster secret${NC}"
@@ -79,9 +79,9 @@ fi
 echo ""
 
 # ------------------------------------------
-# Step 4: Deploy Applications
+# Step 3: Deploy Applications
 # ------------------------------------------
-echo -e "${BOLD}${BLUE}[3/4] Deploying Applications...${NC}"
+echo -e "${BOLD}${BLUE}[3/5] Deploying Applications...${NC}"
 kubectl apply -f "$SCRIPT_DIR/../argocd/bootstrap/02-root-apps.yaml"
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to apply root-apps${NC}"
@@ -92,11 +92,31 @@ echo ""
 # ------------------------------------------
 # Step 4: Point the domain names at the ALB
 # ------------------------------------------
-echo -e "${BOLD}${BLUE}[4/4] Creating Route53 records...${NC}"
+echo -e "${BOLD}${BLUE}[4/5] Creating Route53 records...${NC}"
 "$SCRIPT_DIR/route53-alb.sh" upsert
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to create the Route53 records, run: ./scripts/route53-alb.sh upsert${NC}"
     exit 1
+fi
+echo ""
+
+# ------------------------------------------
+# Step 5: Seed the database
+# ------------------------------------------
+echo -e "${BOLD}${BLUE}[5/5] Seeding the database...${NC}"
+# The backend only becomes available after the migration job finished, so the tables exist by then.
+# kubectl wait fails right away if the Deployment does not exist yet, so wait for it to appear first.
+until kubectl get deployment aws-prod-ecommerce-be -n aws-prod-backend >/dev/null 2>&1; do
+    sleep 5
+done
+kubectl wait --for=condition=available deployment/aws-prod-ecommerce-be -n aws-prod-backend --timeout=600s
+if [ $? -ne 0 ]; then
+    echo -e "${YELLOW}Backend is not available, skipping the seed. Run it later: kubectl exec -n aws-prod-backend deploy/aws-prod-ecommerce-be -- node dist/database/seed.js${NC}"
+else
+    kubectl exec -n aws-prod-backend deploy/aws-prod-ecommerce-be -- node dist/database/seed.js
+    if [ $? -ne 0 ]; then
+        echo -e "${YELLOW}Seeding failed, the stack is still up. Run it again later.${NC}"
+    fi
 fi
 echo ""
 
