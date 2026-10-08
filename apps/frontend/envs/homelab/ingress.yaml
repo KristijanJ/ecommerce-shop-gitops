@@ -2,10 +2,16 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: ecommerce-fe-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: cert-manager-issuer
 spec:
   ingressClassName: traefik
+  tls:
+    - hosts:
+        - ecommerce-homelab.projects.jovanovski.dev
+      secretName: ecommerce-fe-tls
   rules:
-    - host: ecommerce.192.168.0.20.traefik.me
+    - host: ecommerce-homelab.projects.jovanovski.dev
       http:
         paths:
           - path: /

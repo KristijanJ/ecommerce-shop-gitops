@@ -1,0 +1,51 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: cert-manager-appset
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  generators:
+    # Homelab only. Certificates managed with AWS Certificate Manager in AWS
+    - clusters:
+        selector:
+          matchExpressions:
+            - key: env
+              operator: In
+              values: [homelab]
+        values:
+          repoURL: quay.io/jetstack/charts
+          targetRevision: 1.21.2
+  template:
+    metadata:
+      name: "{{metadata.labels.env}}-cert-manager"
+    spec:
+      project: default
+      sources:
+        - chart: cert-manager
+          repoURL: "{{values.repoURL}}"
+          targetRevision: "{{values.targetRevision}}"
+          helm:
+            releaseName: cert-manager
+            valueFiles:
+              - $values/argocd/appSets/platform/values/cert-manager/values.{{metadata.labels.env}}.yaml
+        - repoURL: https://github.com/KristijanJ/ecommerce-shop-gitops.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: "{{server}}"
+        namespace: cert-manager
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 20s
+            factor: 2
+            maxDuration: 3m
