@@ -5,9 +5,9 @@ metadata:
 spec:
   acme:
     email: kristijan.j92@gmail.com
-    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    server: https://acme-v02.api.letsencrypt.org/directory
     privateKeySecretRef:
-      name: cert-issuer-staging-account-key
+      name: cert-issuer-account-key
     solvers:
       - dns01:
           route53:
