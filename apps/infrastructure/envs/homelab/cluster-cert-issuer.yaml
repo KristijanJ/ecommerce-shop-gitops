@@ -1,0 +1,22 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: cert-manager-issuer
+spec:
+  acme:
+    email: kristijan.j92@gmail.com
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: cert-issuer-staging-account-key
+    solvers:
+      - dns01:
+          route53:
+            region: eu-central-1
+            accessKeyIDSecretRef:
+              name: cert-manager-user-secret
+              key: access-key-id
+            secretAccessKeySecretRef:
+              name: cert-manager-user-secret
+              key: secret-access-key
+            hostedZoneID: Z0372279181L87XNAO5BK
+            role: arn:aws:iam::291559603642:role/homelab-cert-manager
