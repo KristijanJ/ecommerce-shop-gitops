@@ -7,7 +7,7 @@ export const options = {
 };
 
 export default function() {
-  let res = http.get('http://ecommerce.192.168.0.20.traefik.me/');
+  let res = http.get('https://ecommerce-homelab.projects.jovanovski.dev/');
   check(res, { "status is 200": (res) => res.status === 200 });
   sleep(1);
 }
