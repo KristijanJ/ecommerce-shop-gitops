@@ -9,4 +9,4 @@ prometheus:
   servicemonitor:
     enabled: true
     labels:
-      - release: kube-prometheus-stack
+      release: kube-prometheus-stack
