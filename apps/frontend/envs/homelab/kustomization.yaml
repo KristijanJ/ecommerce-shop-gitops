@@ -14,4 +14,4 @@ patches:
       name: ecommerce-fe
 images:
   - name: kristijan92/ecommerce-shop-fe
-    newTag: 04be6b4
+    newTag: f4a3813
