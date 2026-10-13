@@ -4,7 +4,11 @@
 # Source this file from a check script. Do not run it directly.
 
 VALIDATE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$VALIDATE_DIR/../.." && pwd)"
+
+# The repo to check. By default it is the repo these scripts live in.
+# Set REPO_ROOT to point the scripts at another checkout, for example the
+# base commit of a pull request.
+REPO_ROOT="${REPO_ROOT:-$(cd "$VALIDATE_DIR/../.." && pwd)}"
 
 # shellcheck disable=SC1091
 source "$VALIDATE_DIR/config.env"
