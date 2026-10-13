@@ -1,0 +1,183 @@
+database:
+  vendor: postgres
+  hostname: 192.168.0.30
+  port: 5432
+  database: keycloak
+  username: keycloak
+  existingSecret: keycloak-db
+  existingSecretKey: password
+
+http:
+  relativePath: "/"
+
+ingress:
+  enabled: true
+  ingressClassName: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: cert-manager-issuer
+  rules:
+    - host: ecommerce-homelab-auth.projects.jovanovski.dev
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - hosts:
+        - ecommerce-homelab-auth.projects.jovanovski.dev
+      secretName: keycloak-tls
+
+extraEnv: |
+  - name: KC_BOOTSTRAP_ADMIN_USERNAME
+    value: admin
+  - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: keycloak-admin
+        key: password
+  - name: KC_HOSTNAME
+    value: https://ecommerce-homelab-auth.projects.jovanovski.dev
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 768Mi
+  limits:
+    memory: 1280Mi
+
+# Start Keycloak after the secrets (wave -1) and the database Job (wave 0).
+statefulsetAnnotations:
+  argocd.argoproj.io/sync-wave: "1"
+
+# Secrets come from Vault through External Secrets. They live in this release
+# so they exist in the keycloak namespace before the StatefulSet starts.
+extraManifests:
+  - apiVersion: external-secrets.io/v1
+    kind: ExternalSecret
+    metadata:
+      name: keycloak-db
+      annotations:
+        argocd.argoproj.io/sync-wave: "-1"
+    spec:
+      refreshInterval: "15s"
+      secretStoreRef:
+        name: vault-secret-store
+        kind: ClusterSecretStore
+      target:
+        name: keycloak-db
+      data:
+        - secretKey: password
+          remoteRef:
+            key: keycloak
+            property: db-pass
+  - apiVersion: external-secrets.io/v1
+    kind: ExternalSecret
+    metadata:
+      name: keycloak-admin
+      annotations:
+        argocd.argoproj.io/sync-wave: "-1"
+    spec:
+      refreshInterval: "15s"
+      secretStoreRef:
+        name: vault-secret-store
+        kind: ClusterSecretStore
+      target:
+        name: keycloak-admin
+      data:
+        - secretKey: password
+          remoteRef:
+            key: keycloak
+            property: admin-password
+  - apiVersion: external-secrets.io/v1
+    kind: ExternalSecret
+    metadata:
+      name: keycloak-db-admin
+      annotations:
+        argocd.argoproj.io/sync-wave: "-1"
+    spec:
+      refreshInterval: "15s"
+      secretStoreRef:
+        name: vault-secret-store
+        kind: ClusterSecretStore
+      target:
+        name: keycloak-db-admin
+      data:
+        - secretKey: host
+          remoteRef:
+            key: db
+            property: db-host
+        - secretKey: port
+          remoteRef:
+            key: db
+            property: db-port
+        - secretKey: user
+          remoteRef:
+            key: db
+            property: db-user
+        - secretKey: password
+          remoteRef:
+            key: db
+            property: db-pass
+  # Creates the keycloak role and database if they are missing. Safe to rerun.
+  - apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: keycloak-db-init
+      annotations:
+        argocd.argoproj.io/hook: Sync
+        argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+        argocd.argoproj.io/sync-wave: "0"
+    spec:
+      backoffLimit: 3
+      template:
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+          containers:
+            - name: psql
+              image: postgres:18.1
+              env:
+                - name: PGHOST
+                  valueFrom:
+                    secretKeyRef:
+                      name: keycloak-db-admin
+                      key: host
+                - name: PGPORT
+                  valueFrom:
+                    secretKeyRef:
+                      name: keycloak-db-admin
+                      key: port
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: keycloak-db-admin
+                      key: user
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: keycloak-db-admin
+                      key: password
+                - name: PGDATABASE
+                  value: postgres
+                - name: KC_DB_PASS
+                  valueFrom:
+                    secretKeyRef:
+                      name: keycloak-db
+                      key: password
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  psql -v ON_ERROR_STOP=1 -v kcpass="$KC_DB_PASS" <<'SQL'
+                  SELECT format('CREATE ROLE keycloak LOGIN PASSWORD %L', :'kcpass')
+                    WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'keycloak') \gexec
+                  ALTER ROLE keycloak PASSWORD :'kcpass';
+                  GRANT keycloak TO CURRENT_USER;
+                  SELECT 'CREATE DATABASE keycloak OWNER keycloak'
+                    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'keycloak') \gexec
+                  SQL
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 128Mi

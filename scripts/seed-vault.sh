@@ -27,6 +27,7 @@ REQUIRED_VARS=(
     DB_HOST DB_PORT DB_USER DB_PASS DB_DATABASE
     JWT_SECRET
     CERT_MANAGER_ACCESS_KEY_ID CERT_MANAGER_SECRET_ACCESS_KEY
+    KEYCLOAK_DB_PASS KEYCLOAK_ADMIN_PASSWORD
 )
 for var in "${REQUIRED_VARS[@]}"; do
     if [ -z "${!var}" ]; then
@@ -61,3 +62,7 @@ vault_put secret/jwt \
 vault_put secret/cert-manager-user \
     access-key-id="$CERT_MANAGER_ACCESS_KEY_ID" \
     secret-access-key="$CERT_MANAGER_SECRET_ACCESS_KEY"
+
+vault_put secret/keycloak \
+    db-pass="$KEYCLOAK_DB_PASS" \
+    admin-password="$KEYCLOAK_ADMIN_PASSWORD"
