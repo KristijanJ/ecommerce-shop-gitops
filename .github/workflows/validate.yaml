@@ -1,0 +1,41 @@
+name: validate
+
+# Runs the same checks as `make validate` (see scripts/validate/).
+# The job name "validate" is the name the main ruleset requires.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # gitleaks scans the whole git history
+          fetch-depth: 0
+
+      - name: Install kubeconform, yq and gitleaks
+        run: |
+          ./scripts/validate/install-tools.sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      # helm downloads about ten charts on every run. Keep them between runs.
+      # The key changes when a chart version in an ApplicationSet changes.
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/helm
+          key: helm-${{ hashFiles('argocd/appSets/platform/*.yaml') }}
+
+      - name: Run the checks
+        run: ./scripts/validate/validate.sh

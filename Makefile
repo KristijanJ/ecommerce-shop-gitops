@@ -30,6 +30,34 @@ help: ## Show this help message
 	@echo ""
 
 # ------------------------------------------------------------------------------
+### Validation commands (the same checks CI runs on every pull request):
+# ------------------------------------------------------------------------------
+
+.PHONY: validate
+validate: ## Run all validation checks
+	@./scripts/validate/validate.sh
+
+.PHONY: validate-kustomize
+validate-kustomize: ## Render and check the kustomize overlays
+	@./scripts/validate/kustomize-apps.sh
+
+.PHONY: validate-helm
+validate-helm: ## Render and check the Helm charts of the platform ApplicationSets
+	@./scripts/validate/helm-charts.sh
+
+.PHONY: validate-argocd
+validate-argocd: ## Check the ApplicationSets and bootstrap manifests
+	@./scripts/validate/argocd-manifests.sh
+
+.PHONY: validate-secrets
+validate-secrets: ## Scan the git history for committed secrets
+	@./scripts/validate/secrets.sh
+
+.PHONY: validate-install-tools
+validate-install-tools: ## Install kubeconform, yq and gitleaks to ~/.local/bin
+	@./scripts/validate/install-tools.sh
+
+# ------------------------------------------------------------------------------
 ### Local development commands:
 # ------------------------------------------------------------------------------
 
