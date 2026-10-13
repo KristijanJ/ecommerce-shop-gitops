@@ -1,0 +1,45 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: keycloak-appset
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  generators:
+    # Matches clusters by the "env" label on the cluster Secret (see argocd/bootstrap/00-cluster-*.yaml)
+    - clusters:
+        selector:
+          matchExpressions:
+            - key: env
+              operator: In
+              values: [homelab]
+        values:
+          repoURL: https://codecentric.github.io/helm-charts
+          targetRevision: 7.3.2
+  template:
+    metadata:
+      name: "{{metadata.labels.env}}-keycloak"
+    spec:
+      project: default
+      sources:
+        - chart: keycloakx
+          repoURL: "{{values.repoURL}}"
+          targetRevision: "{{values.targetRevision}}"
+          helm:
+            releaseName: keycloak
+            valueFiles:
+              - $values/argocd/appSets/platform/values/keycloak/values.{{metadata.labels.env}}.yaml
+        - repoURL: https://github.com/KristijanJ/ecommerce-shop-gitops.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: "{{server}}"
+        namespace: keycloak
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
