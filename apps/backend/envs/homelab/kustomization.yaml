@@ -8,4 +8,4 @@ namePrefix: homelab-
 nameSuffix: ""
 images:
   - name: kristijan92/ecommerce-shop-be
-    newTag: "063095c"
+    newTag: "44247fd"
