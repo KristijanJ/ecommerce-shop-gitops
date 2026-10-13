@@ -68,11 +68,16 @@ extraManifests:
         kind: ClusterSecretStore
       target:
         name: keycloak-db
+        creationPolicy: Owner
+        deletionPolicy: Retain
       data:
         - secretKey: password
           remoteRef:
             key: keycloak
             property: db-pass
+            conversionStrategy: Default
+            decodingStrategy: None
+            metadataPolicy: None
   - apiVersion: external-secrets.io/v1
     kind: ExternalSecret
     metadata:
@@ -86,11 +91,16 @@ extraManifests:
         kind: ClusterSecretStore
       target:
         name: keycloak-admin
+        creationPolicy: Owner
+        deletionPolicy: Retain
       data:
         - secretKey: password
           remoteRef:
             key: keycloak
             property: admin-password
+            conversionStrategy: Default
+            decodingStrategy: None
+            metadataPolicy: None
   - apiVersion: external-secrets.io/v1
     kind: ExternalSecret
     metadata:
@@ -104,23 +114,37 @@ extraManifests:
         kind: ClusterSecretStore
       target:
         name: keycloak-db-admin
+        creationPolicy: Owner
+        deletionPolicy: Retain
       data:
         - secretKey: host
           remoteRef:
             key: db
             property: db-host
+            conversionStrategy: Default
+            decodingStrategy: None
+            metadataPolicy: None
         - secretKey: port
           remoteRef:
             key: db
             property: db-port
+            conversionStrategy: Default
+            decodingStrategy: None
+            metadataPolicy: None
         - secretKey: user
           remoteRef:
             key: db
             property: db-user
+            conversionStrategy: Default
+            decodingStrategy: None
+            metadataPolicy: None
         - secretKey: password
           remoteRef:
             key: db
             property: db-pass
+            conversionStrategy: Default
+            decodingStrategy: None
+            metadataPolicy: None
   # Creates the keycloak role and database if they are missing. Safe to rerun.
   - apiVersion: batch/v1
     kind: Job
