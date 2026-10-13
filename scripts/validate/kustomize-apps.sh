@@ -5,29 +5,23 @@
 # the infrastructure apps.
 
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+source "$VALIDATE_DIR/render-lib.sh"
 
 start_check "Kustomize overlays"
 
-for env in $ENVIRONMENTS; do
-    # Each app has a folder like apps/backend/envs/homelab
-    for overlay in "$REPO_ROOT"/apps/*/envs/"$env"; do
-        if [ ! -d "$overlay" ]; then
-            continue
-        fi
+rendered_file="$WORK_DIR/rendered.yaml"
 
-        name="${overlay#"$REPO_ROOT"/}"
-        rendered_file="$WORK_DIR/rendered.yaml"
-        error_file="$WORK_DIR/render-error.txt"
+for overlay in $(list_overlays); do
+    name="${overlay#"$REPO_ROOT"/}"
 
-        # Step 1: build the overlay. A broken kustomization stops here.
-        if ! kubectl kustomize "$overlay" > "$rendered_file" 2> "$error_file"; then
-            report_fail "$name" "$(cat "$error_file")"
-            continue
-        fi
+    # Step 1: build the overlay. A broken kustomization stops here.
+    if ! render_overlay "$overlay" "$rendered_file"; then
+        report_fail "$name" "$(cat "$RENDER_ERROR_FILE")"
+        continue
+    fi
 
-        # Step 2: check the rendered manifests against the schemas.
-        validate_with_kubeconform "$name" "$rendered_file"
-    done
+    # Step 2: check the rendered manifests against the schemas.
+    validate_with_kubeconform "$name" "$rendered_file"
 done
 
 finish_check

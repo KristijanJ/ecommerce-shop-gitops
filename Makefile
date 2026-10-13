@@ -53,6 +53,10 @@ validate-argocd: ## Check the ApplicationSets and bootstrap manifests
 validate-secrets: ## Scan the git history for committed secrets
 	@./scripts/validate/secrets.sh
 
+.PHONY: diff
+diff: ## Show what your changes do to the rendered manifests (compare with another ref: BASE=origin/main)
+	@./scripts/validate/diff-rendered.sh $(BASE)
+
 .PHONY: validate-install-tools
 validate-install-tools: ## Install kubeconform, yq and gitleaks to ~/.local/bin
 	@./scripts/validate/install-tools.sh
