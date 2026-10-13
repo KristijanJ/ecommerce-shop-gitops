@@ -36,7 +36,10 @@ jobs:
       # Keep that folder between runs. The key changes when a chart version in
       # an ApplicationSet changes. Then restore-keys restores the newest older
       # cache, and only the charts that are missing from it are downloaded.
-      - uses: actions/cache@v6
+      # Restore and save are separate steps. Only the restore action has the
+      # outputs that the summary below reads, and the save step can run even
+      # when a check fails.
+      - uses: actions/cache/restore@v6
         id: chart-cache
         with:
           path: ~/.cache/gitops-charts
@@ -60,3 +63,10 @@ jobs:
           PRIMARY_KEY: ${{ steps.chart-cache.outputs.cache-primary-key }}
           MATCHED_KEY: ${{ steps.chart-cache.outputs.cache-matched-key }}
         run: ./scripts/validate/cache-summary.sh
+
+      # An exact match means the cache already holds everything, so skip the save.
+      - uses: actions/cache/save@v6
+        if: always() && steps.chart-cache.outputs.cache-hit != 'true'
+        with:
+          path: ~/.cache/gitops-charts
+          key: ${{ steps.chart-cache.outputs.cache-primary-key }}
