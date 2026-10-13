@@ -10,6 +10,11 @@ database:
 http:
   relativePath: "/"
 
+# The image's entrypoint is kc.sh. Without a command it prints its help and exits.
+command:
+  - /opt/keycloak/bin/kc.sh
+  - start
+
 ingress:
   enabled: true
   ingressClassName: traefik
