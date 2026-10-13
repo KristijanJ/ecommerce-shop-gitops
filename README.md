@@ -15,17 +15,18 @@ Part of a multi-repo project:
 
 ## Environments
 
-|            | homelab                                                 | aws-prod                                            |
-| ---------- | ------------------------------------------------------- | --------------------------------------------------- |
-| Cluster    | k3s on Proxmox: one control plane, two workers          | EKS, created with Terraform in `ecommerce-infra`    |
-| Lifetime   | Always on, restarted daily                              | Created per session, destroyed afterwards           |
-| Ingress    | Traefik                                                 | AWS Load Balancer Controller (one shared ALB)       |
-| TLS        | cert-manager, Let's Encrypt, Route53 DNS-01             | ACM certificate on the ALB                          |
-| Secrets    | Vault in dev mode, synced by External Secrets           | AWS Secrets Manager, synced by External Secrets     |
-| PostgreSQL | Services VM (`192.168.0.30`)                            | RDS                                                 |
-| Redis      | Services VM (`192.168.0.30`)                            | Redis Deployment in the cluster, no persistence     |
-| Frontend   | <https://ecommerce-homelab.projects.jovanovski.dev>     | <https://ecommerce-k8s.projects.jovanovski.dev>     |
-| Backend    | <https://ecommerce-homelab-api.projects.jovanovski.dev> | <https://ecommerce-k8s-api.projects.jovanovski.dev> |
+|            | homelab                                                  | aws-prod                                            |
+| ---------- | -------------------------------------------------------- | --------------------------------------------------- |
+| Cluster    | k3s on Proxmox: one control plane, two workers           | EKS, created with Terraform in `ecommerce-infra`    |
+| Lifetime   | Always on, restarted daily                               | Created per session, destroyed afterwards           |
+| Ingress    | Traefik                                                  | AWS Load Balancer Controller (one shared ALB)       |
+| TLS        | cert-manager, Let's Encrypt, Route53 DNS-01              | ACM certificate on the ALB                          |
+| Secrets    | Vault in dev mode, synced by External Secrets            | AWS Secrets Manager, synced by External Secrets     |
+| PostgreSQL | Services VM (`192.168.0.30`)                             | RDS                                                 |
+| Redis      | Services VM (`192.168.0.30`)                             | Redis Deployment in the cluster, no persistence     |
+| Frontend   | <https://ecommerce-homelab.projects.jovanovski.dev>      | <https://ecommerce-k8s.projects.jovanovski.dev>     |
+| Backend    | <https://ecommerce-homelab-api.projects.jovanovski.dev>  | <https://ecommerce-k8s-api.projects.jovanovski.dev> |
+| Keycloak   | <https://ecommerce-homelab-auth.projects.jovanovski.dev> | Not deployed                                        |
 
 The homelab hostnames resolve to `192.168.0.20`, so they work only on the home network.
 
@@ -47,7 +48,7 @@ Both environments use the same base manifests and the same platform components w
 │  │                                                            │  │
 │  │  homelab-frontend (Next.js)   homelab-backend (NestJS)     │  │
 │  │  monitoring: Prometheus, Grafana, Loki, Tempo, Collector   │  │
-│  │  vault, external-secrets, cert-manager, argocd             │  │
+│  │  vault, external-secrets, cert-manager, keycloak, argocd   │  │
 │  └────────────────────────────────────────────────────────────┘  │
 │                                                                  │
 │  ┌────────────────────────────────────────────────────────────┐  │
@@ -92,6 +93,7 @@ ArgoCD installs these from `argocd/appSets/platform/`. The "Where" column shows 
 | cert-manager                 | TLS certificates       | homelab  | Let's Encrypt with Route53 DNS-01                                    |
 | Vault                        | Secrets backend        | homelab  | Dev mode, in memory                                                  |
 | External Secrets Operator    | Secret sync            | both     | Vault on homelab, Secrets Manager on aws-prod                        |
+| Keycloak                     | Identity provider      | homelab  | Database on the services VM, see the Keycloak section                |
 | kube-prometheus-stack        | Metrics and dashboards | both     | Prometheus, Grafana, Alertmanager                                    |
 | Loki                         | Log storage            | both     | Receives logs from the collector over OTLP                           |
 | Tempo                        | Trace storage          | both     | Single binary, 3 day retention, local PVC                            |
@@ -152,17 +154,65 @@ The migration Job is an ArgoCD hook (`hook: Sync`, `hook-delete-policy: BeforeHo
 
 ## CI/CD
 
-```text
-merge to main in ecommerce-shop-be or ecommerce-shop-fe
-  → GitHub Actions: lint, test, build the image
-  → push to Docker Hub as kristijan92/ecommerce-shop-{be,fe}:<first 7 characters of the commit SHA>
-  → the workflow commits the new tag to apps/<service>/envs/homelab/kustomization.yaml in this repo
-  → ArgoCD on the homelab syncs the change
-```
+### Releasing an app
 
-A GitHub App token lets the app repos push to this repo. The App is the only bypass actor on the ruleset that protects `main` here. Each app repo's `release.yaml` has the details.
+A push to `main` in `ecommerce-shop-be` or `ecommerce-shop-fe` starts that repo's `release.yaml`. A push that changes only `.md` files does not. The workflow:
+
+1. Runs lint and the tests.
+2. Builds the image and pushes it to Docker Hub as `kristijan92/ecommerce-shop-{be,fe}:<first 7 characters of the commit SHA>`.
+3. Sets `newTag` in `apps/<service>/envs/homelab/kustomization.yaml` in this repo, on the branch `bump/backend-homelab` or `bump/frontend-homelab`.
+4. Opens a pull request from that branch and turns on auto-merge with the squash method.
+
+The `validate` workflow runs on the pull request. When it passes, GitHub merges the PR and ArgoCD on the homelab syncs the new tag. A second build before the merge replaces the commit on the same branch, so each service has at most one open bump PR.
+
+The workflow opens the PR with a token from a GitHub App. A PR opened with the default `GITHUB_TOKEN` does not start other workflows, so `validate` would not run and the PR could not merge. The App needs read and write access to contents and pull requests in this repo. Each app repo's `release.yaml` has the details.
 
 The workflows change only the homelab overlays. The aws-prod and local overlays keep the tag they were last given by hand. To deploy a build on aws-prod, change `newTag` in `apps/<service>/envs/aws-prod/kustomization.yaml` and merge it.
+
+### Branch protection
+
+The ruleset `protect-main` covers `main`. It blocks deleting the branch and force pushes, and it requires a pull request and a passing `validate` check. No approval is required. The ruleset has no bypass actors, so the maintainer and the GitHub App follow the same rules. The repo settings allow auto-merge and delete a branch after its PR merges.
+
+### Checks on pull requests
+
+`.github/workflows/validate.yaml` runs on every pull request and on every push to `main`. It runs `scripts/validate/validate.sh`, the same script as `make validate`. The workflow uses no secrets, so it also runs safely on pull requests from forks.
+
+| Check              | What it does                                                                                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tools              | Confirms that `helm`, `kubectl`, `kubeconform`, `yq` and `gitleaks` are installed                                                                 |
+| Kustomize overlays | Builds the homelab and aws-prod overlay of each app with `kubectl kustomize` and checks the result with `kubeconform`                             |
+| Helm charts        | For each platform ApplicationSet and environment, downloads the pinned chart, renders it with the environment's values file and checks the result |
+| ArgoCD manifests   | Checks every ApplicationSet, root Application and cluster Secret                                                                                  |
+| Secret scan        | Runs `gitleaks` over the git history                                                                                                              |
+
+`kubeconform` checks each manifest against the Kubernetes 1.36 schemas and the community [CRD catalog](https://github.com/datreeio/CRDs-catalog). It runs in strict mode, so a field that the schema does not know fails the check, and so does a kind that has no schema. `scripts/validate/config.env` lists three kinds that are skipped. `ClusterSecretStore` and `SecretStore` are skipped because `kubeconform` cannot load their catalog schemas. `CustomResourceDefinition` is skipped because the charts ship their CRDs as the vendors wrote them.
+
+The checks cover the `homelab` and `aws-prod` overlays and charts. The `local` overlays are left out, because no ApplicationSet selects them.
+
+A passing check shows that the manifests render and match their schemas. It does not show that a container starts, that a Vault key exists, or that resources sync in the right order.
+
+### Rendered changes
+
+On pull requests the workflow also runs `scripts/validate/diff-rendered.sh`. It renders every overlay and chart for the base commit and for the PR, then lists the resources that are added, changed or removed in each app. The report is on the summary page of the run. Apps without changes are only counted.
+
+Secret values are replaced before the comparison, so the report never contains them. CustomResourceDefinitions are left out. For each app the report lists at most 30 resources and shows at most 10 diffs of 40 lines each. A failure in this step does not fail the check.
+
+### Running the checks locally
+
+```bash
+make validate-install-tools   # kubeconform, yq and gitleaks to ~/.local/bin
+make validate                 # every check
+make validate-kustomize       # one check at a time
+make validate-helm
+make validate-argocd
+make validate-secrets
+make diff                     # rendered changes against origin/main
+make diff BASE=<ref>          # against another ref
+```
+
+`helm` and `kubectl` have to be installed by hand. `scripts/validate/config.env` pins the tool versions and their SHA-256 checksums, and the installer checks every download. Each check is its own script in `scripts/validate/` and can run alone.
+
+The scripts download each chart once into `~/.cache/gitops-charts`. Locally the Helm check takes about 7 seconds with the charts cached and 20 seconds without. CI keeps the folder between runs and adds a line about it to the run summary: an exact hit, a partial hit from the newest older cache, or a miss.
 
 ---
 
@@ -189,19 +239,19 @@ cp scripts/vault-seed.example.env scripts/vault-seed.env
 # fill in the values
 ```
 
-The file holds the database settings (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_DATABASE`), `JWT_SECRET`, and the access key of the cert-manager IAM user. It writes `secret/db`, `secret/jwt` and `secret/cert-manager-user`.
+The file holds the database settings (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_DATABASE`), `JWT_SECRET`, the access key of the cert-manager IAM user, and the two Keycloak passwords (`KEYCLOAK_DB_PASS` and `KEYCLOAK_ADMIN_PASSWORD`). It writes `secret/db`, `secret/jwt`, `secret/cert-manager-user` and `secret/keycloak`.
 
 ---
 
 ## TLS on the homelab
 
-cert-manager issues Let's Encrypt production certificates for the two homelab hostnames. The cluster is not reachable from the internet, so it uses the DNS-01 challenge against Route53.
+cert-manager issues Let's Encrypt production certificates for the homelab hostnames. The cluster is not reachable from the internet, so it uses the DNS-01 challenge against Route53.
 
 - The cert-manager ApplicationSet is `argocd/appSets/platform/cert-manager.yaml`, with values in `values/cert-manager/values.homelab.yaml`.
 - `apps/infrastructure/envs/homelab/cluster-cert-issuer.yaml` defines the ClusterIssuer `cert-manager-issuer`. It uses the ACME production server and the Route53 solver for the `projects.jovanovski.dev` zone in `eu-central-1`.
 - The solver uses the IAM user `homelab-cert-manager`. The user can only assume the role `homelab-cert-manager`, and the role may only read changes and edit TXT records in that hosted zone.
 - The user's access key sits in Vault at `secret/cert-manager-user`. An ExternalSecret (`cert-iam-user-secret.yaml`) copies it into the `cert-manager-user-secret` Secret in the `cert-manager` namespace.
-- Each homelab Ingress has the annotation `cert-manager.io/cluster-issuer: cert-manager-issuer` and a `tls:` block. cert-manager creates the `ecommerce-fe-tls` and `ecommerce-be-tls` Secrets.
+- Each homelab Ingress has the annotation `cert-manager.io/cluster-issuer: cert-manager-issuer` and a `tls:` block. cert-manager creates the `ecommerce-fe-tls`, `ecommerce-be-tls` and `keycloak-tls` Secrets.
 
 Certificates last 90 days and renew by themselves. Check them with:
 
@@ -212,6 +262,63 @@ kubectl get challenges -A
 ```
 
 To test changes without hitting the production rate limits, point `server` in the ClusterIssuer at `https://acme-staging-v02.api.letsencrypt.org/directory` and use a different `privateKeySecretRef` name. Browsers do not trust staging certificates.
+
+---
+
+## Keycloak
+
+Keycloak runs on the homelab at <https://ecommerce-homelab-auth.projects.jovanovski.dev>. It is meant as the login for cluster tools such as Grafana, ArgoCD and Headlamp. No tool uses it yet.
+
+The ApplicationSet is `argocd/appSets/platform/keycloak.yaml`. It installs the `keycloakx` chart from codecentric (version 7.3.2, Keycloak 26.7.4) into the `keycloak` namespace with one replica. The values are in `values/keycloak/values.homelab.yaml`. The pod requests 200m CPU and 768Mi memory and has a 1280Mi memory limit.
+
+### How it is set up
+
+The values set the container command to `/opt/keycloak/bin/kc.sh start`. The chart does not set one, and without it the image prints its help text and exits.
+
+TLS ends at Traefik. Keycloak listens on plain HTTP inside the cluster, trusts the forwarded headers from the proxy and builds its URLs from `KC_HOSTNAME`. The Ingress carries the annotation `cert-manager.io/cluster-issuer: cert-manager-issuer`, and cert-manager creates the `keycloak-tls` Secret. The console is at `/admin/`, and the OIDC endpoints are under `/realms/<realm>`.
+
+### Database
+
+Keycloak keeps its data in a `keycloak` database on the PostgreSQL server on the services VM (`192.168.0.30`). The Job `keycloak-db-init` creates the `keycloak` role and database when they are missing, and sets the role's password on every run. It connects with the admin credentials from Vault `secret/db`. The Job is an ArgoCD Sync hook, so ArgoCD deletes and recreates it on every sync.
+
+### Secrets
+
+Three ExternalSecrets in the same release read from Vault.
+
+| Secret              | Vault source                                                 | Used for                                     |
+| ------------------- | ------------------------------------------------------------ | -------------------------------------------- |
+| `keycloak-db`       | `secret/keycloak`, key `db-pass`                             | The password of the `keycloak` database role |
+| `keycloak-admin`    | `secret/keycloak`, key `admin-password`                      | The password of the bootstrap admin user     |
+| `keycloak-db-admin` | `secret/db`, keys `db-host`, `db-port`, `db-user`, `db-pass` | The init Job's connection to PostgreSQL      |
+
+Set `KEYCLOAK_DB_PASS` and `KEYCLOAK_ADMIN_PASSWORD` in `scripts/vault-seed.env`, and `scripts/seed-vault.sh` writes `secret/keycloak`.
+
+The ExternalSecrets spell out the default fields that External Secrets adds to every object (`conversionStrategy`, `decodingStrategy`, `metadataPolicy`, `creationPolicy` and `deletionPolicy`). Without them ArgoCD shows the objects as OutOfSync.
+
+### Start order
+
+```text
+ApplicationSet  wave 2   after External Secrets (wave 1), so the ExternalSecret CRD exists
+wave -1         the three ExternalSecrets
+wave  0         the keycloak-db-init Job
+wave  1         the Keycloak StatefulSet
+```
+
+### DNS
+
+Create an A record for `ecommerce-homelab-auth.projects.jovanovski.dev` in the `jovanovski.dev` Route53 hosted zone. Point it at `192.168.0.20` with a TTL of 300, like the other homelab hosts. Create the record before anything looks the name up. Resolvers cache a missing name for 15 minutes, the negative TTL in the zone's SOA, and a router can keep that answer for a while after the record exists. A line in `/etc/hosts` works around it.
+
+### First login
+
+The bootstrap admin user is `admin`, and its password comes from the Vault key `admin-password`. Keycloak creates this user only when its database is empty, so changing the Vault value later does not change the password.
+
+Check the deployment with:
+
+```bash
+kubectl get pods,certificate -n keycloak
+kubectl logs -n keycloak keycloak-keycloakx-0
+kubectl logs -n keycloak job/keycloak-db-init
+```
 
 ---
 
@@ -324,6 +431,7 @@ The script asks you to confirm the kubectl context. Then it installs ArgoCD, dep
 
 - Frontend: <https://ecommerce-homelab.projects.jovanovski.dev>
 - Backend API: <https://ecommerce-homelab-api.projects.jovanovski.dev>
+- Keycloak: <https://ecommerce-homelab-auth.projects.jovanovski.dev>
 - ArgoCD: run `make argocd-ui`, then open <https://localhost:8080>. The user is `admin`, and `make argocd-password` prints the password.
 - Grafana: run `make grafana-ui`, then open <http://localhost:3000> (admin/admin).
 - Vault: run `make vault-ui`, then open <http://localhost:8200> (token `root`).
@@ -376,7 +484,9 @@ This setup is the oldest part of the repo and is untested since the homelab and 
 | `argocd/bootstrap/`           | Cluster Secrets and the two root Applications                                     |
 | `argocd/appSets/platform/`    | ApplicationSets and Helm values for the platform components                       |
 | `argocd/appSets/application/` | ApplicationSets for the apps                                                      |
+| `.github/`                    | The `validate` workflow and the Dependabot configuration for GitHub Actions       |
 | `scripts/`                    | Start and teardown scripts, the Vault seed script, the Route53 script             |
+| `scripts/validate/`           | The checks that CI and `make validate` run, and the rendered-changes report       |
 | `kind/`                       | kind cluster config                                                               |
 | `ansible/`                    | Inventory for the Proxmox VMs                                                     |
 | `k6-load-testing/`            | k6 load test against the homelab frontend                                         |
@@ -428,13 +538,24 @@ make logs-frontend      # tail frontend logs
 make hpa                # HPA status
 make events             # recent warning events
 make check-requirements # check local tools
+
+# Validation
+make validate-install-tools  # kubeconform, yq and gitleaks to ~/.local/bin
+make validate           # every check that CI runs
+make validate-kustomize # kustomize overlays
+make validate-helm      # Helm charts of the platform ApplicationSets
+make validate-argocd    # ApplicationSets and bootstrap manifests
+make validate-secrets   # gitleaks over the git history
+make diff               # rendered changes against origin/main (BASE=<ref> for another ref)
 ```
 
 ---
 
 ## Planned
 
-- Checks on this repo and the infra repo (`kubeconform`, `terraform validate`).
+- Keycloak on aws-prod, with its database on RDS.
+- Login through Keycloak for Grafana, ArgoCD and Headlamp.
+- Terraform checks on the infra repo (`terraform fmt`, `validate` and `plan`).
 - A `promote` workflow that opens a PR to move an image tag to the aws-prod overlay.
 - CodePipeline for the Terraform deploy and destroy, and for the start and teardown scripts.
 - external-dns to replace `scripts/route53-alb.sh`.
