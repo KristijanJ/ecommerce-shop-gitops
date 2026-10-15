@@ -269,6 +269,32 @@ extraManifests:
               - roles
               - email
               - groups
+          - clientId: argocd
+            name: ArgoCD
+            enabled: true
+            protocol: openid-connect
+            publicClient: false
+            secret: "$(env:ARGOCD_KEYCLOAK_CLIENT_SECRET)"
+            standardFlowEnabled: true
+            implicitFlowEnabled: false
+            directAccessGrantsEnabled: true
+            serviceAccountsEnabled: false
+            rootUrl: https://ecommerce-homelab-argocd.projects.jovanovski.dev
+            baseUrl: https://ecommerce-homelab-argocd.projects.jovanovski.dev
+            redirectUris:
+              - https://ecommerce-homelab-argocd.projects.jovanovski.dev/auth/callback
+              # `argocd login --sso` receives the login on this local address
+              - http://localhost:8085/auth/callback
+            webOrigins:
+              - https://ecommerce-homelab-argocd.projects.jovanovski.dev
+            defaultClientScopes:
+              - basic
+              - web-origins
+              - acr
+              - profile
+              - roles
+              - email
+              - groups
   # The Grafana client secret. Grafana reads the same Vault key, so both sides always match.
   - apiVersion: external-secrets.io/v1
     kind: ExternalSecret
@@ -297,6 +323,13 @@ extraManifests:
           remoteRef:
             key: keycloak
             property: config-cli-client-secret
+            conversionStrategy: Default
+            decodingStrategy: None
+            metadataPolicy: None
+        - secretKey: argocd-client-secret
+          remoteRef:
+            key: argocd
+            property: argocd_keycloak_client_secret
             conversionStrategy: Default
             decodingStrategy: None
             metadataPolicy: None
@@ -344,6 +377,11 @@ extraManifests:
                     secretKeyRef:
                       name: keycloak-realm-secrets
                       key: grafana-client-secret
+                - name: ARGOCD_KEYCLOAK_CLIENT_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: keycloak-realm-secrets
+                      key: argocd-client-secret
               volumeMounts:
                 - name: realm
                   mountPath: /config
