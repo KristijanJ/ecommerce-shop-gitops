@@ -210,3 +210,141 @@ extraManifests:
                   memory: 32Mi
                 limits:
                   memory: 128Mi
+  # Realm "platform" as code. keycloak-config-cli applies this file with the Job below.
+  # $(env:NAME) is replaced from the Job's environment, so no secret is in git.
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: keycloak-realm-platform
+      annotations:
+        argocd.argoproj.io/sync-wave: "-1"
+    data:
+      platform.yaml: |
+        realm: platform
+        enabled: true
+        displayName: Platform
+        groups:
+          - name: cluster-admins
+          - name: viewers
+        clientScopes:
+          - name: groups
+            protocol: openid-connect
+            attributes:
+              include.in.token.scope: "false"
+              display.on.consent.screen: "true"
+            protocolMappers:
+              - name: groups
+                protocol: openid-connect
+                protocolMapper: oidc-group-membership-mapper
+                config:
+                  claim.name: groups
+                  full.path: "false"
+                  id.token.claim: "true"
+                  access.token.claim: "true"
+                  userinfo.token.claim: "true"
+                  introspection.token.claim: "true"
+                  lightweight.claim: "false"
+        clients:
+          - clientId: grafana
+            name: Grafana
+            enabled: true
+            protocol: openid-connect
+            publicClient: false
+            secret: "$(env:GRAFANA_KEYCLOAK_CLIENT_SECRET)"
+            standardFlowEnabled: true
+            implicitFlowEnabled: false
+            directAccessGrantsEnabled: false
+            serviceAccountsEnabled: false
+            rootUrl: https://ecommerce-homelab-grafana.projects.jovanovski.dev
+            baseUrl: https://ecommerce-homelab-grafana.projects.jovanovski.dev
+            redirectUris:
+              - https://ecommerce-homelab-grafana.projects.jovanovski.dev/login/generic_oauth
+            webOrigins:
+              - https://ecommerce-homelab-grafana.projects.jovanovski.dev
+            defaultClientScopes:
+              - basic
+              - web-origins
+              - acr
+              - profile
+              - roles
+              - email
+              - groups
+  # The Grafana client secret. Grafana reads the same Vault key, so both sides always match.
+  - apiVersion: external-secrets.io/v1
+    kind: ExternalSecret
+    metadata:
+      name: keycloak-realm-secrets
+      annotations:
+        argocd.argoproj.io/sync-wave: "-1"
+    spec:
+      refreshInterval: "15s"
+      secretStoreRef:
+        name: vault-secret-store
+        kind: ClusterSecretStore
+      target:
+        name: keycloak-realm-secrets
+        creationPolicy: Owner
+        deletionPolicy: Retain
+      data:
+        - secretKey: grafana-client-secret
+          remoteRef:
+            key: grafana
+            property: grafana_keycloak_client_secret
+            conversionStrategy: Default
+            decodingStrategy: None
+            metadataPolicy: None
+  # Applies the realm file after Keycloak is healthy. It runs on every sync of this app.
+  # Safe to rerun: the tool only changes what differs, and deletes only what it created.
+  - apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: keycloak-realm-config
+      annotations:
+        argocd.argoproj.io/hook: PostSync
+        argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    spec:
+      backoffLimit: 3
+      template:
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+          containers:
+            - name: config-cli
+              image: adorsys/keycloak-config-cli:6.5.1-26.5.5
+              env:
+                - name: KEYCLOAK_URL
+                  value: http://keycloak-keycloakx-http.keycloak.svc.cluster.local
+                - name: KEYCLOAK_AVAILABILITYCHECK_ENABLED
+                  value: "true"
+                - name: KEYCLOAK_USER
+                  value: admin
+                - name: KEYCLOAK_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: keycloak-admin
+                      key: password
+                - name: IMPORT_FILES_LOCATIONS
+                  value: /config/*.yaml
+                - name: IMPORT_VARSUBSTITUTION_ENABLED
+                  value: "true"
+                - name: GRAFANA_KEYCLOAK_CLIENT_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: keycloak-realm-secrets
+                      key: grafana-client-secret
+              volumeMounts:
+                - name: realm
+                  mountPath: /config
+                  readOnly: true
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 512Mi
+          volumes:
+            - name: realm
+              configMap:
+                name: keycloak-realm-platform

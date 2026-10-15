@@ -15,18 +15,19 @@ Part of a multi-repo project:
 
 ## Environments
 
-|            | homelab                                                  | aws-prod                                            |
-| ---------- | -------------------------------------------------------- | --------------------------------------------------- |
-| Cluster    | k3s on Proxmox: one control plane, two workers           | EKS, created with Terraform in `ecommerce-infra`    |
-| Lifetime   | Always on, restarted daily                               | Created per session, destroyed afterwards           |
-| Ingress    | Traefik                                                  | AWS Load Balancer Controller (one shared ALB)       |
-| TLS        | cert-manager, Let's Encrypt, Route53 DNS-01              | ACM certificate on the ALB                          |
-| Secrets    | Vault in dev mode, synced by External Secrets            | AWS Secrets Manager, synced by External Secrets     |
-| PostgreSQL | Services VM (`192.168.0.30`)                             | RDS                                                 |
-| Redis      | Services VM (`192.168.0.30`)                             | Redis Deployment in the cluster, no persistence     |
-| Frontend   | <https://ecommerce-homelab.projects.jovanovski.dev>      | <https://ecommerce-k8s.projects.jovanovski.dev>     |
-| Backend    | <https://ecommerce-homelab-api.projects.jovanovski.dev>  | <https://ecommerce-k8s-api.projects.jovanovski.dev> |
-| Keycloak   | <https://ecommerce-homelab-auth.projects.jovanovski.dev> | Not deployed                                        |
+|            | homelab                                                     | aws-prod                                            |
+| ---------- | ----------------------------------------------------------- | --------------------------------------------------- |
+| Cluster    | k3s on Proxmox: one control plane, two workers              | EKS, created with Terraform in `ecommerce-infra`    |
+| Lifetime   | Always on, restarted daily                                  | Created per session, destroyed afterwards           |
+| Ingress    | Traefik                                                     | AWS Load Balancer Controller (one shared ALB)       |
+| TLS        | cert-manager, Let's Encrypt, Route53 DNS-01                 | ACM certificate on the ALB                          |
+| Secrets    | Vault in dev mode, synced by External Secrets               | AWS Secrets Manager, synced by External Secrets     |
+| PostgreSQL | Services VM (`192.168.0.30`)                                | RDS                                                 |
+| Redis      | Services VM (`192.168.0.30`)                                | Redis Deployment in the cluster, no persistence     |
+| Frontend   | <https://ecommerce-homelab.projects.jovanovski.dev>         | <https://ecommerce-k8s.projects.jovanovski.dev>     |
+| Backend    | <https://ecommerce-homelab-api.projects.jovanovski.dev>     | <https://ecommerce-k8s-api.projects.jovanovski.dev> |
+| Keycloak   | <https://ecommerce-homelab-auth.projects.jovanovski.dev>    | Not deployed                                        |
+| Grafana    | <https://ecommerce-homelab-grafana.projects.jovanovski.dev> | Port-forward with `make grafana-ui`                 |
 
 The homelab hostnames resolve to `192.168.0.20`, so they work only on the home network.
 
@@ -239,7 +240,7 @@ cp scripts/vault-seed.example.env scripts/vault-seed.env
 # fill in the values
 ```
 
-The file holds the database settings (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_DATABASE`), `JWT_SECRET`, the access key of the cert-manager IAM user, and the two Keycloak passwords (`KEYCLOAK_DB_PASS` and `KEYCLOAK_ADMIN_PASSWORD`). It writes `secret/db`, `secret/jwt`, `secret/cert-manager-user` and `secret/keycloak`.
+The file holds the database settings (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_DATABASE`), `JWT_SECRET`, the access key of the cert-manager IAM user, the two Keycloak passwords (`KEYCLOAK_DB_PASS` and `KEYCLOAK_ADMIN_PASSWORD`), and two Grafana values (`GRAFANA_KEYCLOAK_CLIENT_SECRET` and `GRAFANA_ADMIN_PASSWORD`). It writes `secret/db`, `secret/jwt`, `secret/cert-manager-user`, `secret/keycloak` and `secret/grafana`.
 
 ---
 
@@ -267,7 +268,7 @@ To test changes without hitting the production rate limits, point `server` in th
 
 ## Keycloak
 
-Keycloak runs on the homelab at <https://ecommerce-homelab-auth.projects.jovanovski.dev>. It is meant as the login for cluster tools such as Grafana, ArgoCD and Headlamp. No tool uses it yet.
+Keycloak runs on the homelab at <https://ecommerce-homelab-auth.projects.jovanovski.dev>. It is the login for cluster tools. Grafana uses it today, and ArgoCD and Headlamp are planned.
 
 The ApplicationSet is `argocd/appSets/platform/keycloak.yaml`. It installs the `keycloakx` chart from codecentric (version 7.3.2, Keycloak 26.7.4) into the `keycloak` namespace with one replica. The values are in `values/keycloak/values.homelab.yaml`. The pod requests 200m CPU and 768Mi memory and has a 1280Mi memory limit.
 
@@ -283,13 +284,14 @@ Keycloak keeps its data in a `keycloak` database on the PostgreSQL server on the
 
 ### Secrets
 
-Three ExternalSecrets in the same release read from Vault.
+Four ExternalSecrets in the same release read from Vault.
 
-| Secret              | Vault source                                                 | Used for                                     |
-| ------------------- | ------------------------------------------------------------ | -------------------------------------------- |
-| `keycloak-db`       | `secret/keycloak`, key `db-pass`                             | The password of the `keycloak` database role |
-| `keycloak-admin`    | `secret/keycloak`, key `admin-password`                      | The password of the bootstrap admin user     |
-| `keycloak-db-admin` | `secret/db`, keys `db-host`, `db-port`, `db-user`, `db-pass` | The init Job's connection to PostgreSQL      |
+| Secret                   | Vault source                                                 | Used for                                          |
+| ------------------------ | ------------------------------------------------------------ | ------------------------------------------------- |
+| `keycloak-db`            | `secret/keycloak`, key `db-pass`                             | The password of the `keycloak` database role      |
+| `keycloak-admin`         | `secret/keycloak`, key `admin-password`                      | The password of the bootstrap admin user          |
+| `keycloak-db-admin`      | `secret/db`, keys `db-host`, `db-port`, `db-user`, `db-pass` | The init Job's connection to PostgreSQL           |
+| `keycloak-realm-secrets` | `secret/grafana`, key `grafana_keycloak_client_secret`       | The Grafana client secret, set by the realm Job   |
 
 Set `KEYCLOAK_DB_PASS` and `KEYCLOAK_ADMIN_PASSWORD` in `scripts/vault-seed.env`, and `scripts/seed-vault.sh` writes `secret/keycloak`.
 
@@ -302,7 +304,28 @@ ApplicationSet  wave 2   after External Secrets (wave 1), so the ExternalSecret 
 wave -1         the three ExternalSecrets
 wave  0         the keycloak-db-init Job
 wave  1         the Keycloak StatefulSet
+PostSync        the keycloak-realm-config Job, after Keycloak is healthy
 ```
+
+### Realm as code
+
+The `platform` realm is defined in the ConfigMap `keycloak-realm-platform` in the same values file. It holds the groups `cluster-admins` and `viewers`, the `groups` client scope with its Group Membership mapper, and the `grafana` client. The Job `keycloak-realm-config` runs [keycloak-config-cli](https://github.com/adorsys/keycloak-config-cli) as an ArgoCD PostSync hook, so it applies the file after every sync of the Keycloak app.
+
+The Job logs in as the bootstrap `admin` user and reaches Keycloak through the in-cluster service. It replaces `$(env:GRAFANA_KEYCLOAK_CLIENT_SECRET)` in the file with the value from the `keycloak-realm-secrets` Secret, so the client secret is never in git. Grafana reads the same Vault key, so both sides always match. The tool deletes only the objects it created itself.
+
+Change the realm by editing the ConfigMap. The next run overwrites changes made in the admin console to the objects in the file. Users are not in the file, so a new Keycloak needs a user added by hand and put in a group.
+
+Check a run with:
+
+```bash
+kubectl logs -n keycloak job/keycloak-realm-config
+```
+
+### Grafana login
+
+Grafana is at <https://ecommerce-homelab-grafana.projects.jovanovski.dev>. Its Ingress uses the same Traefik and cert-manager setup as Keycloak, so the DNS record for the host goes into the `jovanovski.dev` zone like the others. The Keycloak button on the login page signs in with the realm `platform`. The role comes from the `groups` claim: `cluster-admins` becomes Admin and `viewers` becomes Viewer. A user in neither group is denied.
+
+The built-in `admin` user still exists. Its password comes from Vault (`GRAFANA_ADMIN_PASSWORD`) through the ExternalSecret `grafana-admin`, and the datasource and dashboard sidecars log in with it to call the reload endpoints. Do not remove that account.
 
 ### DNS
 
@@ -352,7 +375,7 @@ The teardown script refuses to run unless the kubectl context contains `ecommerc
 
 ### Known behavior
 
-After a cold start Grafana can show no data sources. The datasource sidecar writes its file after Grafana has read its provisioning. Reload it with a POST to `/api/admin/provisioning/datasources/reload`, or restart the Grafana Deployment.
+After a cold start Grafana can show no data sources. The datasource sidecar writes its file after Grafana has read its provisioning. Reload it with a POST to `/api/admin/provisioning/datasources/reload`, or restart the Grafana Deployment. The POST needs the admin login. Basic auth for the API stays on when the login form is hidden.
 
 The aws-prod overlays have no network policies yet.
 
@@ -433,7 +456,7 @@ The script asks you to confirm the kubectl context. Then it installs ArgoCD, dep
 - Backend API: <https://ecommerce-homelab-api.projects.jovanovski.dev>
 - Keycloak: <https://ecommerce-homelab-auth.projects.jovanovski.dev>
 - ArgoCD: run `make argocd-ui`, then open <https://localhost:8080>. The user is `admin`, and `make argocd-password` prints the password.
-- Grafana: run `make grafana-ui`, then open <http://localhost:3000> (admin/admin).
+- Grafana: <https://ecommerce-homelab-grafana.projects.jovanovski.dev>. Log in with Keycloak, or as `admin` with the password from `GRAFANA_ADMIN_PASSWORD`.
 - Vault: run `make vault-ui`, then open <http://localhost:8200> (token `root`).
 
 ### After a Proxmox restart
@@ -527,7 +550,7 @@ make vault-get          # read secret/db and secret/jwt
 make vault-ui           # http://localhost:8200
 
 # Monitoring
-make grafana-ui         # http://localhost:3000 (admin/admin)
+make grafana-ui         # http://localhost:3000 (aws-prod: admin/admin, homelab: use its own host)
 make prometheus-ui      # http://localhost:9090
 make alertmanager-ui    # http://localhost:9093
 
@@ -554,7 +577,7 @@ make diff               # rendered changes against origin/main (BASE=<ref> for a
 ## Planned
 
 - Keycloak on aws-prod, with its database on RDS.
-- Login through Keycloak for Grafana, ArgoCD and Headlamp.
+- Login through Keycloak for ArgoCD and Headlamp.
 - Terraform checks on the infra repo (`terraform fmt`, `validate` and `plan`).
 - A `promote` workflow that opens a PR to move an image tag to the aws-prod overlay.
 - CodePipeline for the Terraform deploy and destroy, and for the start and teardown scripts.

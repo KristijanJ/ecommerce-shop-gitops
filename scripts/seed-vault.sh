@@ -28,7 +28,7 @@ REQUIRED_VARS=(
     JWT_SECRET
     CERT_MANAGER_ACCESS_KEY_ID CERT_MANAGER_SECRET_ACCESS_KEY
     KEYCLOAK_DB_PASS KEYCLOAK_ADMIN_PASSWORD
-    GRAFANA_KEYCLOAK_CLIENT_SECRET
+    GRAFANA_KEYCLOAK_CLIENT_SECRET GRAFANA_ADMIN_PASSWORD
 )
 for var in "${REQUIRED_VARS[@]}"; do
     if [ -z "${!var}" ]; then
@@ -69,4 +69,6 @@ vault_put secret/keycloak \
     admin-password="$KEYCLOAK_ADMIN_PASSWORD"
 
 vault_put secret/grafana \
-    grafana_keycloak_client_secret="$GRAFANA_KEYCLOAK_CLIENT_SECRET"
+    grafana_keycloak_client_secret="$GRAFANA_KEYCLOAK_CLIENT_SECRET" \
+    admin_user=admin \
+    admin_password="$GRAFANA_ADMIN_PASSWORD"
