@@ -241,7 +241,7 @@ cp scripts/vault-seed.example.env scripts/vault-seed.env
 # fill in the values
 ```
 
-The file holds the database settings (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_DATABASE`), `JWT_SECRET`, the access key of the cert-manager IAM user, the three Keycloak values (`KEYCLOAK_DB_PASS`, `KEYCLOAK_ADMIN_PASSWORD` and `KEYCLOAK_CONFIG_CLI_CLIENT_SECRET`), and two Grafana values (`GRAFANA_KEYCLOAK_CLIENT_SECRET` and `GRAFANA_ADMIN_PASSWORD`). It writes `secret/db`, `secret/jwt`, `secret/cert-manager-user`, `secret/keycloak` and `secret/grafana`.
+The file holds the database settings (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_DATABASE`), `JWT_SECRET`, the access key of the cert-manager IAM user, the three Keycloak values (`KEYCLOAK_DB_PASS`, `KEYCLOAK_ADMIN_PASSWORD` and `KEYCLOAK_CONFIG_CLI_CLIENT_SECRET`), two Grafana values (`GRAFANA_KEYCLOAK_CLIENT_SECRET` and `GRAFANA_ADMIN_PASSWORD`), and the ArgoCD client secret (`ARGOCD_KEYCLOAK_CLIENT_SECRET`). It writes `secret/db`, `secret/jwt`, `secret/cert-manager-user`, `secret/keycloak`, `secret/grafana` and `secret/argocd`.
 
 ---
 
@@ -253,7 +253,7 @@ cert-manager issues Let's Encrypt production certificates for the homelab hostna
 - `apps/infrastructure/envs/homelab/cluster-cert-issuer.yaml` defines the ClusterIssuer `cert-manager-issuer`. It uses the ACME production server and the Route53 solver for the `projects.jovanovski.dev` zone in `eu-central-1`.
 - The solver uses the IAM user `homelab-cert-manager`. The user can only assume the role `homelab-cert-manager`, and the role may only read changes and edit TXT records in that hosted zone.
 - The user's access key sits in Vault at `secret/cert-manager-user`. An ExternalSecret (`cert-iam-user-secret.yaml`) copies it into the `cert-manager-user-secret` Secret in the `cert-manager` namespace.
-- Each homelab Ingress has the annotation `cert-manager.io/cluster-issuer: cert-manager-issuer` and a `tls:` block. cert-manager creates the `ecommerce-fe-tls`, `ecommerce-be-tls` and `keycloak-tls` Secrets.
+- Each homelab Ingress has the annotation `cert-manager.io/cluster-issuer: cert-manager-issuer` and a `tls:` block. cert-manager creates the `ecommerce-fe-tls`, `ecommerce-be-tls`, `keycloak-tls`, `grafana-tls` and `ecommerce-argocd-tls` Secrets.
 
 Certificates last 90 days and renew by themselves. Check them with:
 
@@ -269,7 +269,7 @@ To test changes without hitting the production rate limits, point `server` in th
 
 ## Keycloak
 
-Keycloak runs on the homelab at <https://ecommerce-homelab-auth.projects.jovanovski.dev>. It is the login for cluster tools. Grafana and ArgoCD use it today, and Headlamp is planned.
+Keycloak runs on the homelab at <https://ecommerce-homelab-auth.projects.jovanovski.dev>. It is the login for cluster tools. Grafana and ArgoCD sign in through it, and Headlamp is planned. It is not the login for the shop's own users.
 
 The ApplicationSet is `argocd/appSets/platform/keycloak.yaml`. It installs the `keycloakx` chart from codecentric (version 7.3.2, Keycloak 26.7.4) into the `keycloak` namespace with one replica. The values are in `values/keycloak/values.homelab.yaml`. The pod requests 200m CPU and 768Mi memory and has a 1280Mi memory limit.
 
@@ -287,14 +287,14 @@ Keycloak keeps its data in a `keycloak` database on the PostgreSQL server on the
 
 Four ExternalSecrets in the same release read from Vault.
 
-| Secret                   | Vault source                                                                                            | Used for                                            |
-| ------------------------ | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| `keycloak-db`            | `secret/keycloak`, key `db-pass`                                                                        | The password of the `keycloak` database role        |
-| `keycloak-admin`         | `secret/keycloak`, key `admin-password`                                                                 | The password of the bootstrap admin user            |
-| `keycloak-db-admin`      | `secret/db`, keys `db-host`, `db-port`, `db-user`, `db-pass`                                            | The init Job's connection to PostgreSQL             |
-| `keycloak-realm-secrets` | `secret/grafana` key `grafana_keycloak_client_secret`, `secret/keycloak` key `config-cli-client-secret` | The realm Job's login and the Grafana client secret |
+| Secret                   | Vault source                                                                                                                                                 | Used for                                                           |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `keycloak-db`            | `secret/keycloak`, key `db-pass`                                                                                                                             | The password of the `keycloak` database role                       |
+| `keycloak-admin`         | `secret/keycloak`, key `admin-password`                                                                                                                      | The password of the bootstrap admin user                           |
+| `keycloak-db-admin`      | `secret/db`, keys `db-host`, `db-port`, `db-user`, `db-pass`                                                                                                 | The init Job's connection to PostgreSQL                            |
+| `keycloak-realm-secrets` | `secret/keycloak` key `config-cli-client-secret`, `secret/grafana` key `grafana_keycloak_client_secret`, `secret/argocd` key `argocd_keycloak_client_secret` | The realm Job's login and the client secrets of Grafana and ArgoCD |
 
-Set `KEYCLOAK_DB_PASS`, `KEYCLOAK_ADMIN_PASSWORD` and `KEYCLOAK_CONFIG_CLI_CLIENT_SECRET` in `scripts/vault-seed.env`, and `scripts/seed-vault.sh` writes `secret/keycloak`.
+Set `KEYCLOAK_DB_PASS`, `KEYCLOAK_ADMIN_PASSWORD` and `KEYCLOAK_CONFIG_CLI_CLIENT_SECRET` in `scripts/vault-seed.env`, and `scripts/seed-vault.sh` writes `secret/keycloak`. `GRAFANA_KEYCLOAK_CLIENT_SECRET` and `ARGOCD_KEYCLOAK_CLIENT_SECRET` go into `secret/grafana` and `secret/argocd` the same way. Choose the two client secrets yourself, for example with `openssl rand -hex 32`. The realm Job sets them on the clients, and Grafana and ArgoCD read the same Vault values.
 
 The ExternalSecrets spell out the default fields that External Secrets adds to every object (`conversionStrategy`, `decodingStrategy`, `metadataPolicy`, `creationPolicy` and `deletionPolicy`). Without them ArgoCD shows the objects as OutOfSync.
 
@@ -302,7 +302,7 @@ The ExternalSecrets spell out the default fields that External Secrets adds to e
 
 ```text
 ApplicationSet  wave 2   after External Secrets (wave 1), so the ExternalSecret CRD exists
-wave -1         the three ExternalSecrets
+wave -1         the four ExternalSecrets and the realm ConfigMap
 wave  0         the keycloak-db-init Job
 wave  1         the Keycloak StatefulSet
 PostSync        the keycloak-realm-config Job, after Keycloak is healthy
@@ -310,11 +310,24 @@ PostSync        the keycloak-realm-config Job, after Keycloak is healthy
 
 ### Realm as code
 
-The `platform` realm is defined in the ConfigMap `keycloak-realm-platform` in the same values file. It holds the groups `cluster-admins` and `viewers`, the `groups` client scope with its Group Membership mapper, and the `grafana` client. The Job `keycloak-realm-config` runs [keycloak-config-cli](https://github.com/adorsys/keycloak-config-cli) as an ArgoCD PostSync hook, so it applies the file after every sync of the Keycloak app.
+The `platform` realm is defined in the ConfigMap `keycloak-realm-platform` in the same values file. It holds the groups `cluster-admins` and `viewers`, the `groups` client scope with its Group Membership mapper, and the clients `grafana` and `argocd`. The Job `keycloak-realm-config` runs [keycloak-config-cli](https://github.com/adorsys/keycloak-config-cli) as an ArgoCD PostSync hook, so it applies the file after every sync of the Keycloak app. The image tag is `6.5.1-26.5.5`, built for Keycloak 26.5, and it works against 26.7.4.
 
-The Job reaches Keycloak through the in-cluster service and logs in to the `master` realm as the service account of the client `keycloak-config-cli`. That client has no browser login. Its service account holds the roles of the `platform-realm` client (`manage-realm`, `manage-clients`, `manage-users` and the matching view and query roles), so it can change only the `platform` realm. Create the client by hand once, in the admin console, and put its secret in `KEYCLOAK_CONFIG_CLI_CLIENT_SECRET`. It replaces `$(env:GRAFANA_KEYCLOAK_CLIENT_SECRET)` in the file with the value from the `keycloak-realm-secrets` Secret, so the client secret is never in git. Grafana reads the same Vault key, so both sides always match. The tool deletes only the objects it created itself.
+The Job reaches Keycloak at `http://keycloak-keycloakx-http.keycloak.svc.cluster.local` and logs in to the `master` realm as the service account of the client `keycloak-config-cli`. That client has no browser login. Its service account holds roles of the `platform-realm` client, so it can change only the `platform` realm. With those roles the tool cannot read the server version. It logs `Server info unavailable` and carries on.
 
-Change the realm by editing the ConfigMap. The next run overwrites changes made in the admin console to the objects in the file. Users are not in the file, so a new Keycloak needs a user added by hand and put in a group.
+Client secrets appear in the file as `$(env:NAME)`. The Job takes the values from `keycloak-realm-secrets`, and the tool substitutes them, so no secret is in git.
+
+Change the realm by editing the ConfigMap. A run overwrites changes made in the admin console to the objects in the file. The tool deletes only objects it created itself, so objects made by hand stay.
+
+A new client needs four changes:
+
+- A client entry in the ConfigMap, with its secret as `$(env:NAME)`.
+- A variable for the secret in `scripts/vault-seed.env`, `scripts/vault-seed.example.env` and `scripts/seed-vault.sh`.
+- A key for it in the ExternalSecret `keycloak-realm-secrets`.
+- An environment variable with that name in the Job.
+
+The tool that uses the client reads the same Vault key through its own ExternalSecret.
+
+The file does not contain users, their group memberships, the `master` realm or the client `keycloak-config-cli`. They are created by hand when Keycloak starts with an empty database, as described in the next section.
 
 Check a run with:
 
@@ -322,34 +335,20 @@ Check a run with:
 kubectl logs -n keycloak job/keycloak-realm-config
 ```
 
-### Grafana login
+A good run logs `Importing file 'file:/config/platform.yaml'`, ends with `keycloak-config-cli ran in ...` and shows no errors. An error with status 403 names the endpoint, and the service account needs the matching role.
 
-Grafana is at <https://ecommerce-homelab-grafana.projects.jovanovski.dev>. Its Ingress uses the same Traefik and cert-manager setup as Keycloak, so the DNS record for the host goes into the `jovanovski.dev` zone like the others. The Keycloak button on the login page signs in with the realm `platform`. The role comes from the `groups` claim: `cluster-admins` becomes Admin and `viewers` becomes Viewer. A user in neither group is denied.
+### Bootstrapping a new Keycloak
 
-The built-in `admin` user still exists. Its password comes from Vault (`GRAFANA_ADMIN_PASSWORD`) through the ExternalSecret `grafana-admin`, and the datasource and dashboard sidecars log in with it to call the reload endpoints. Do not remove that account.
+A Keycloak with an empty database has one user, the bootstrap admin, and no `platform` realm. Set it up once in the admin console at `/admin/`. After that the Job keeps the realm.
 
-### ArgoCD login
-
-ArgoCD is at <https://ecommerce-homelab-argocd.projects.jovanovski.dev>. The Keycloak client `argocd` comes from the realm file, and its secret comes from Vault (`ARGOCD_KEYCLOAK_CLIENT_SECRET`) through the ExternalSecret `argocd-oidc` in the `argocd` namespace. Four ConfigMaps and one Ingress in `apps/infrastructure/envs/homelab` configure it:
-
-| File                        | What it sets                                                                                            |
-| --------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `argocd-cm.yaml`            | The URL and `oidc.config`, which points at the realm `platform` and reads the secret from `argocd-oidc` |
-| `argocd-rbac-cm.yaml`       | `cluster-admins` becomes `role:admin` and `viewers` becomes `role:readonly`. Everyone else gets nothing |
-| `argocd-cmd-params-cm.yaml` | `server.insecure`, so `argocd-server` serves plain HTTP behind Traefik, which ends TLS                  |
-| `argocd-ingress.yaml`       | The host, with a Let's Encrypt certificate from cert-manager                                            |
-
-ArgoCD installs from `install.yaml` with its own default ConfigMaps. The three ConfigMap files list only the keys this repo owns, so the other keys from the install stay. Each one has the annotation `Prune=false`, so removing a file does not delete the ConfigMap. ArgoCD reads `argocd-cmd-params-cm` at startup, so run `kubectl rollout restart deploy/argocd-server -n argocd` after a change to it.
-
-The local `admin` user still works, and `make argocd-password` prints its password. For the CLI, use `argocd login ecommerce-homelab-argocd.projects.jovanovski.dev --sso --grpc-web`.
-
-### DNS
-
-Create an A record for `ecommerce-homelab-auth.projects.jovanovski.dev` in the `jovanovski.dev` Route53 hosted zone. Point it at `192.168.0.20` with a TTL of 300, like the other homelab hosts. Create the record before anything looks the name up. Resolvers cache a missing name for 15 minutes, the negative TTL in the zone's SOA, and a router can keep that answer for a while after the record exists. A line in `/etc/hosts` works around it.
-
-### First login
-
-The bootstrap admin user is `admin`, and its password comes from the Vault key `admin-password`. Keycloak creates this user only when its database is empty, so changing the Vault value later does not change the password.
+1. Sign in as `admin`. The password is the Vault value `admin-password`. Keycloak creates this user only when its database is empty, so changing the Vault value later does not change the password.
+2. In the `master` realm, create your own admin. Go to Users, Add user, and set a username, email, first name and last name. Set a password on the Credentials tab. On the Role mapping tab, assign the realm role `admin`. Sign out and sign in as this user.
+3. Create an empty realm named `platform` from the realm menu at the top left. This also creates the client `platform-realm` in `master`, which step 5 needs. The Job fills in the realm later.
+4. In `master`, go to Clients, Create client. Choose OpenID Connect and the client ID `keycloak-config-cli`. Turn Client authentication on. Under authentication flow, tick only Service accounts roles, and leave Root URL and Home URL empty. On the Credentials tab, copy the client secret into `KEYCLOAK_CONFIG_CLI_CLIENT_SECRET` in `scripts/vault-seed.env`, then run `make vault-seed`.
+5. Open the client's Service accounts roles tab and choose Assign role. Switch the filter to Filter by clients and add these roles of the `platform-realm` client: `manage-realm`, `manage-clients`, `manage-users`, `manage-identity-providers`, `manage-authorization`, `view-realm`, `view-clients`, `view-users`, `view-identity-providers`, `view-authorization`, `view-events`, `query-clients`, `query-groups` and `query-users`. The `platform-realm` client has no `realm-admin` role in `master`, so add them one by one. The `admin` realm role of `master` also works, but it gives the Job control of every realm.
+6. Sync `homelab-keycloak` in ArgoCD. The Job runs after Keycloak is healthy and creates the groups, the scope and the clients in `platform`.
+7. In the `platform` realm, create your user. Set a username, email, first name and last name, and turn Email verified on. Set a password on the Credentials tab with Temporary off. On the Groups tab, join `cluster-admins`. A user in no group cannot sign in to Grafana or ArgoCD.
+8. In `master`, open the user `admin` and turn Enabled off. Do this after step 2 and after a successful Job run. The Job does not use the bootstrap admin.
 
 Check the deployment with:
 
@@ -358,6 +357,34 @@ kubectl get pods,certificate -n keycloak
 kubectl logs -n keycloak keycloak-keycloakx-0
 kubectl logs -n keycloak job/keycloak-db-init
 ```
+
+### Grafana login
+
+Grafana is at <https://ecommerce-homelab-grafana.projects.jovanovski.dev>. Its Ingress uses the same Traefik and cert-manager setup as Keycloak. The `grafana` client in the realm file has the redirect URI `https://ecommerce-homelab-grafana.projects.jovanovski.dev/login/generic_oauth`, and `grafana.ini` sets `root_url` to the same host. Both have to match.
+
+The Keycloak button on the login page signs in with the realm `platform`. The role comes from the `groups` claim. `cluster-admins` becomes Admin and `viewers` becomes Viewer. A user in neither group is denied.
+
+The built-in `admin` user still exists. Its password comes from Vault (`GRAFANA_ADMIN_PASSWORD`) through the ExternalSecret `grafana-admin`, and the datasource and dashboard sidecars log in with it to call the reload endpoints. Do not remove that account.
+
+### ArgoCD login
+
+ArgoCD is at <https://ecommerce-homelab-argocd.projects.jovanovski.dev>. The `argocd` client comes from the realm file. Its secret comes from Vault (`ARGOCD_KEYCLOAK_CLIENT_SECRET`) through the ExternalSecret `argocd-oidc` in the `argocd` namespace. Five files in `apps/infrastructure/envs/homelab` configure ArgoCD:
+
+| File                        | What it sets                                                                                            |
+| --------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `argocd-oidc-secret.yaml`   | The ExternalSecret `argocd-oidc`, labeled so that ArgoCD reads it                                       |
+| `argocd-cm.yaml`            | The URL and `oidc.config`, which points at the realm `platform` and reads the secret from `argocd-oidc` |
+| `argocd-rbac-cm.yaml`       | `cluster-admins` becomes `role:admin` and `viewers` becomes `role:readonly`. Everyone else gets nothing |
+| `argocd-cmd-params-cm.yaml` | `server.insecure`, so `argocd-server` serves plain HTTP behind Traefik, which ends TLS                  |
+| `argocd-ingress.yaml`       | The host, with a Let's Encrypt certificate from cert-manager                                            |
+
+ArgoCD installs from `install.yaml` with its own default ConfigMaps. The three ConfigMap files list only the keys this repo owns, so the other keys from the install stay. Each one has the annotation `Prune=false`, so removing a file does not delete the ConfigMap. ArgoCD reads `argocd-cmd-params-cm` at startup, so run `kubectl rollout restart deploy/argocd-server -n argocd` after a change to it.
+
+The local `admin` user still works, and `make argocd-password` prints its password. For the CLI, use `argocd login ecommerce-homelab-argocd.projects.jovanovski.dev --sso --grpc-web`. The `argocd` client accepts `http://localhost:8085/auth/callback` as a redirect URI for this login.
+
+### DNS
+
+Each of the hosts `ecommerce-homelab-auth`, `ecommerce-homelab-grafana` and `ecommerce-homelab-argocd` under `projects.jovanovski.dev` needs an A record in the `jovanovski.dev` Route53 hosted zone. Point each at `192.168.0.20` with a TTL of 300, like the other homelab hosts. Create the record before anything looks the name up. Resolvers cache a missing name for 15 minutes, the negative TTL in the zone's SOA, and a router can keep that answer for a while after the record exists. A line in `/etc/hosts` works around it.
 
 ---
 
