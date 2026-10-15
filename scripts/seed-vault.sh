@@ -29,6 +29,7 @@ REQUIRED_VARS=(
     CERT_MANAGER_ACCESS_KEY_ID CERT_MANAGER_SECRET_ACCESS_KEY
     KEYCLOAK_DB_PASS KEYCLOAK_ADMIN_PASSWORD KEYCLOAK_CONFIG_CLI_CLIENT_SECRET
     GRAFANA_KEYCLOAK_CLIENT_SECRET GRAFANA_ADMIN_PASSWORD ARGOCD_KEYCLOAK_CLIENT_SECRET
+    HEADLAMP_KEYCLOAK_CLIENT_SECRET
 )
 for var in "${REQUIRED_VARS[@]}"; do
     if [ -z "${!var}" ]; then
@@ -76,3 +77,6 @@ vault_put secret/grafana \
 
 vault_put secret/argocd \
     argocd_keycloak_client_secret="$ARGOCD_KEYCLOAK_CLIENT_SECRET"
+
+vault_put secret/headlamp \
+    headlamp_keycloak_client_secret="$HEADLAMP_KEYCLOAK_CLIENT_SECRET"
