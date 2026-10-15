@@ -293,6 +293,13 @@ extraManifests:
             conversionStrategy: Default
             decodingStrategy: None
             metadataPolicy: None
+        - secretKey: config-cli-client-secret
+          remoteRef:
+            key: keycloak
+            property: config-cli-client-secret
+            conversionStrategy: Default
+            decodingStrategy: None
+            metadataPolicy: None
   # Applies the realm file after Keycloak is healthy. It runs on every sync of this app.
   # Safe to rerun: the tool only changes what differs, and deletes only what it created.
   - apiVersion: batch/v1
@@ -318,13 +325,16 @@ extraManifests:
                   value: http://keycloak-keycloakx-http.keycloak.svc.cluster.local
                 - name: KEYCLOAK_AVAILABILITYCHECK_ENABLED
                   value: "true"
-                - name: KEYCLOAK_USER
-                  value: admin
-                - name: KEYCLOAK_PASSWORD
+                # Logs in to the master realm as the service account of the client keycloak-config-cli.
+                - name: KEYCLOAK_GRANTTYPE
+                  value: client_credentials
+                - name: KEYCLOAK_CLIENTID
+                  value: keycloak-config-cli
+                - name: KEYCLOAK_CLIENTSECRET
                   valueFrom:
                     secretKeyRef:
-                      name: keycloak-admin
-                      key: password
+                      name: keycloak-realm-secrets
+                      key: config-cli-client-secret
                 - name: IMPORT_FILES_LOCATIONS
                   value: /config/*.yaml
                 - name: IMPORT_VARSUBSTITUTION_ENABLED

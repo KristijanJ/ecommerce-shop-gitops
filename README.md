@@ -240,7 +240,7 @@ cp scripts/vault-seed.example.env scripts/vault-seed.env
 # fill in the values
 ```
 
-The file holds the database settings (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_DATABASE`), `JWT_SECRET`, the access key of the cert-manager IAM user, the two Keycloak passwords (`KEYCLOAK_DB_PASS` and `KEYCLOAK_ADMIN_PASSWORD`), and two Grafana values (`GRAFANA_KEYCLOAK_CLIENT_SECRET` and `GRAFANA_ADMIN_PASSWORD`). It writes `secret/db`, `secret/jwt`, `secret/cert-manager-user`, `secret/keycloak` and `secret/grafana`.
+The file holds the database settings (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_DATABASE`), `JWT_SECRET`, the access key of the cert-manager IAM user, the three Keycloak values (`KEYCLOAK_DB_PASS`, `KEYCLOAK_ADMIN_PASSWORD` and `KEYCLOAK_CONFIG_CLI_CLIENT_SECRET`), and two Grafana values (`GRAFANA_KEYCLOAK_CLIENT_SECRET` and `GRAFANA_ADMIN_PASSWORD`). It writes `secret/db`, `secret/jwt`, `secret/cert-manager-user`, `secret/keycloak` and `secret/grafana`.
 
 ---
 
@@ -286,14 +286,14 @@ Keycloak keeps its data in a `keycloak` database on the PostgreSQL server on the
 
 Four ExternalSecrets in the same release read from Vault.
 
-| Secret                   | Vault source                                                 | Used for                                          |
-| ------------------------ | ------------------------------------------------------------ | ------------------------------------------------- |
-| `keycloak-db`            | `secret/keycloak`, key `db-pass`                             | The password of the `keycloak` database role      |
-| `keycloak-admin`         | `secret/keycloak`, key `admin-password`                      | The password of the bootstrap admin user          |
-| `keycloak-db-admin`      | `secret/db`, keys `db-host`, `db-port`, `db-user`, `db-pass` | The init Job's connection to PostgreSQL           |
-| `keycloak-realm-secrets` | `secret/grafana`, key `grafana_keycloak_client_secret`       | The Grafana client secret, set by the realm Job   |
+| Secret                   | Vault source                                                                                            | Used for                                            |
+| ------------------------ | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `keycloak-db`            | `secret/keycloak`, key `db-pass`                                                                        | The password of the `keycloak` database role        |
+| `keycloak-admin`         | `secret/keycloak`, key `admin-password`                                                                 | The password of the bootstrap admin user            |
+| `keycloak-db-admin`      | `secret/db`, keys `db-host`, `db-port`, `db-user`, `db-pass`                                            | The init Job's connection to PostgreSQL             |
+| `keycloak-realm-secrets` | `secret/grafana` key `grafana_keycloak_client_secret`, `secret/keycloak` key `config-cli-client-secret` | The realm Job's login and the Grafana client secret |
 
-Set `KEYCLOAK_DB_PASS` and `KEYCLOAK_ADMIN_PASSWORD` in `scripts/vault-seed.env`, and `scripts/seed-vault.sh` writes `secret/keycloak`.
+Set `KEYCLOAK_DB_PASS`, `KEYCLOAK_ADMIN_PASSWORD` and `KEYCLOAK_CONFIG_CLI_CLIENT_SECRET` in `scripts/vault-seed.env`, and `scripts/seed-vault.sh` writes `secret/keycloak`.
 
 The ExternalSecrets spell out the default fields that External Secrets adds to every object (`conversionStrategy`, `decodingStrategy`, `metadataPolicy`, `creationPolicy` and `deletionPolicy`). Without them ArgoCD shows the objects as OutOfSync.
 
@@ -311,7 +311,7 @@ PostSync        the keycloak-realm-config Job, after Keycloak is healthy
 
 The `platform` realm is defined in the ConfigMap `keycloak-realm-platform` in the same values file. It holds the groups `cluster-admins` and `viewers`, the `groups` client scope with its Group Membership mapper, and the `grafana` client. The Job `keycloak-realm-config` runs [keycloak-config-cli](https://github.com/adorsys/keycloak-config-cli) as an ArgoCD PostSync hook, so it applies the file after every sync of the Keycloak app.
 
-The Job logs in as the bootstrap `admin` user and reaches Keycloak through the in-cluster service. It replaces `$(env:GRAFANA_KEYCLOAK_CLIENT_SECRET)` in the file with the value from the `keycloak-realm-secrets` Secret, so the client secret is never in git. Grafana reads the same Vault key, so both sides always match. The tool deletes only the objects it created itself.
+The Job reaches Keycloak through the in-cluster service and logs in to the `master` realm as the service account of the client `keycloak-config-cli`. That client has no browser login. Its service account holds the roles of the `platform-realm` client (`manage-realm`, `manage-clients`, `manage-users` and the matching view and query roles), so it can change only the `platform` realm. Create the client by hand once, in the admin console, and put its secret in `KEYCLOAK_CONFIG_CLI_CLIENT_SECRET`. It replaces `$(env:GRAFANA_KEYCLOAK_CLIENT_SECRET)` in the file with the value from the `keycloak-realm-secrets` Secret, so the client secret is never in git. Grafana reads the same Vault key, so both sides always match. The tool deletes only the objects it created itself.
 
 Change the realm by editing the ConfigMap. The next run overwrites changes made in the admin console to the objects in the file. Users are not in the file, so a new Keycloak needs a user added by hand and put in a group.
 
