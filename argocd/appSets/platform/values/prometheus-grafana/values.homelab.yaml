@@ -89,6 +89,31 @@ grafana:
           tags:
             - key: service.name
               value: service_name
+  envValueFrom:
+    GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET:
+      secretKeyRef:
+        name: grafana-keycloak
+        key: grafana_keycloak_client_secret
+  grafana.ini:
+    # Must equal the Keycloak client's redirect URI base (the port-forward from `make grafana-ui`).
+    server:
+      root_url: http://localhost:3000
+    auth.generic_oauth:
+      enabled: true
+      name: Keycloak-OAuth
+      allow_sign_up: true
+      client_id: grafana
+      scopes: openid email profile groups
+      email_attribute_path: email
+      login_attribute_path: preferred_username
+      name_attribute_path: name
+      auth_url: https://ecommerce-homelab-auth.projects.jovanovski.dev/realms/platform/protocol/openid-connect/auth
+      token_url: https://ecommerce-homelab-auth.projects.jovanovski.dev/realms/platform/protocol/openid-connect/token
+      api_url: https://ecommerce-homelab-auth.projects.jovanovski.dev/realms/platform/protocol/openid-connect/userinfo
+      signout_redirect_url: https://ecommerce-homelab-auth.projects.jovanovski.dev/realms/platform/protocol/openid-connect/logout
+      # Group names come from the "groups" claim. A user in neither group is denied.
+      role_attribute_path: contains(groups[*], 'cluster-admins') && 'Admin' || contains(groups[*], 'viewers') && 'Viewer'
+      role_attribute_strict: true
 
 alertmanager:
   alertmanagerSpec:
@@ -131,3 +156,28 @@ kube-state-metrics:
     limits:
       memory: 256Mi
       cpu: 200m
+
+extraManifests:
+  - apiVersion: external-secrets.io/v1
+    kind: ExternalSecret
+    metadata:
+      name: grafana-keycloak
+      annotations:
+        argocd.argoproj.io/sync-wave: "-1"
+    spec:
+      refreshInterval: "15s"
+      secretStoreRef:
+        name: vault-secret-store
+        kind: ClusterSecretStore
+      target:
+        name: grafana-keycloak
+        creationPolicy: Owner
+        deletionPolicy: Retain
+      data:
+        - secretKey: grafana_keycloak_client_secret
+          remoteRef:
+            key: grafana
+            property: grafana_keycloak_client_secret
+            conversionStrategy: Default
+            decodingStrategy: None
+            metadataPolicy: None
