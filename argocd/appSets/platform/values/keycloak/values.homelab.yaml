@@ -295,7 +295,31 @@ extraManifests:
               - roles
               - email
               - groups
-  # The Grafana client secret. Grafana reads the same Vault key, so both sides always match.
+          - clientId: headlamp
+            name: Headlamp
+            enabled: true
+            protocol: openid-connect
+            publicClient: false
+            secret: "$(env:HEADLAMP_KEYCLOAK_CLIENT_SECRET)"
+            standardFlowEnabled: true
+            implicitFlowEnabled: false
+            directAccessGrantsEnabled: false
+            serviceAccountsEnabled: false
+            rootUrl: https://ecommerce-homelab-headlamp.projects.jovanovski.dev
+            baseUrl: https://ecommerce-homelab-headlamp.projects.jovanovski.dev
+            redirectUris:
+              - https://ecommerce-homelab-headlamp.projects.jovanovski.dev/oidc-callback
+            webOrigins:
+              - https://ecommerce-homelab-headlamp.projects.jovanovski.dev
+            defaultClientScopes:
+              - basic
+              - web-origins
+              - acr
+              - profile
+              - roles
+              - email
+              - groups
+  # The client secrets of the tools. Each tool reads the same Vault key, so both sides always match.
   - apiVersion: external-secrets.io/v1
     kind: ExternalSecret
     metadata:
@@ -330,6 +354,13 @@ extraManifests:
           remoteRef:
             key: argocd
             property: argocd_keycloak_client_secret
+            conversionStrategy: Default
+            decodingStrategy: None
+            metadataPolicy: None
+        - secretKey: headlamp-client-secret
+          remoteRef:
+            key: headlamp
+            property: headlamp_keycloak_client_secret
             conversionStrategy: Default
             decodingStrategy: None
             metadataPolicy: None
@@ -382,6 +413,11 @@ extraManifests:
                     secretKeyRef:
                       name: keycloak-realm-secrets
                       key: argocd-client-secret
+                - name: HEADLAMP_KEYCLOAK_CLIENT_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: keycloak-realm-secrets
+                      key: headlamp-client-secret
               volumeMounts:
                 - name: realm
                   mountPath: /config

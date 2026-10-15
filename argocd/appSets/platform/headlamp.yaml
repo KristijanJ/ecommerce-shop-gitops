@@ -1,0 +1,45 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: headlamp-appset
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  generators:
+    # Matches clusters by the "env" label on the cluster Secret (see argocd/bootstrap/00-cluster-*.yaml)
+    - clusters:
+        selector:
+          matchExpressions:
+            - key: env
+              operator: In
+              values: [homelab]
+        values:
+          repoURL: https://kubernetes-sigs.github.io/headlamp/
+          targetRevision: 0.45.0
+  template:
+    metadata:
+      name: "{{metadata.labels.env}}-headlamp"
+    spec:
+      project: default
+      sources:
+        - chart: headlamp
+          repoURL: "{{values.repoURL}}"
+          targetRevision: "{{values.targetRevision}}"
+          helm:
+            releaseName: headlamp
+            valueFiles:
+              - $values/argocd/appSets/platform/values/headlamp/values.{{metadata.labels.env}}.yaml
+        - repoURL: https://github.com/KristijanJ/ecommerce-shop-gitops.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: "{{server}}"
+        namespace: headlamp
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
