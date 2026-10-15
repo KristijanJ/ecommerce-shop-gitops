@@ -28,6 +28,7 @@ Part of a multi-repo project:
 | Backend    | <https://ecommerce-homelab-api.projects.jovanovski.dev>     | <https://ecommerce-k8s-api.projects.jovanovski.dev> |
 | Keycloak   | <https://ecommerce-homelab-auth.projects.jovanovski.dev>    | Not deployed                                        |
 | Grafana    | <https://ecommerce-homelab-grafana.projects.jovanovski.dev> | Port-forward with `make grafana-ui`                 |
+| ArgoCD     | <https://ecommerce-homelab-argocd.projects.jovanovski.dev>  | Port-forward with `make argocd-ui`                  |
 
 The homelab hostnames resolve to `192.168.0.20`, so they work only on the home network.
 
@@ -268,7 +269,7 @@ To test changes without hitting the production rate limits, point `server` in th
 
 ## Keycloak
 
-Keycloak runs on the homelab at <https://ecommerce-homelab-auth.projects.jovanovski.dev>. It is the login for cluster tools. Grafana uses it today, and ArgoCD and Headlamp are planned.
+Keycloak runs on the homelab at <https://ecommerce-homelab-auth.projects.jovanovski.dev>. It is the login for cluster tools. Grafana and ArgoCD use it today, and Headlamp is planned.
 
 The ApplicationSet is `argocd/appSets/platform/keycloak.yaml`. It installs the `keycloakx` chart from codecentric (version 7.3.2, Keycloak 26.7.4) into the `keycloak` namespace with one replica. The values are in `values/keycloak/values.homelab.yaml`. The pod requests 200m CPU and 768Mi memory and has a 1280Mi memory limit.
 
@@ -326,6 +327,21 @@ kubectl logs -n keycloak job/keycloak-realm-config
 Grafana is at <https://ecommerce-homelab-grafana.projects.jovanovski.dev>. Its Ingress uses the same Traefik and cert-manager setup as Keycloak, so the DNS record for the host goes into the `jovanovski.dev` zone like the others. The Keycloak button on the login page signs in with the realm `platform`. The role comes from the `groups` claim: `cluster-admins` becomes Admin and `viewers` becomes Viewer. A user in neither group is denied.
 
 The built-in `admin` user still exists. Its password comes from Vault (`GRAFANA_ADMIN_PASSWORD`) through the ExternalSecret `grafana-admin`, and the datasource and dashboard sidecars log in with it to call the reload endpoints. Do not remove that account.
+
+### ArgoCD login
+
+ArgoCD is at <https://ecommerce-homelab-argocd.projects.jovanovski.dev>. The Keycloak client `argocd` comes from the realm file, and its secret comes from Vault (`ARGOCD_KEYCLOAK_CLIENT_SECRET`) through the ExternalSecret `argocd-oidc` in the `argocd` namespace. Four ConfigMaps and one Ingress in `apps/infrastructure/envs/homelab` configure it:
+
+| File                        | What it sets                                                                                            |
+| --------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `argocd-cm.yaml`            | The URL and `oidc.config`, which points at the realm `platform` and reads the secret from `argocd-oidc` |
+| `argocd-rbac-cm.yaml`       | `cluster-admins` becomes `role:admin` and `viewers` becomes `role:readonly`. Everyone else gets nothing |
+| `argocd-cmd-params-cm.yaml` | `server.insecure`, so `argocd-server` serves plain HTTP behind Traefik, which ends TLS                  |
+| `argocd-ingress.yaml`       | The host, with a Let's Encrypt certificate from cert-manager                                            |
+
+ArgoCD installs from `install.yaml` with its own default ConfigMaps. The three ConfigMap files list only the keys this repo owns, so the other keys from the install stay. Each one has the annotation `Prune=false`, so removing a file does not delete the ConfigMap. ArgoCD reads `argocd-cmd-params-cm` at startup, so run `kubectl rollout restart deploy/argocd-server -n argocd` after a change to it.
+
+The local `admin` user still works, and `make argocd-password` prints its password. For the CLI, use `argocd login ecommerce-homelab-argocd.projects.jovanovski.dev --sso --grpc-web`.
 
 ### DNS
 
@@ -455,7 +471,7 @@ The script asks you to confirm the kubectl context. Then it installs ArgoCD, dep
 - Frontend: <https://ecommerce-homelab.projects.jovanovski.dev>
 - Backend API: <https://ecommerce-homelab-api.projects.jovanovski.dev>
 - Keycloak: <https://ecommerce-homelab-auth.projects.jovanovski.dev>
-- ArgoCD: run `make argocd-ui`, then open <https://localhost:8080>. The user is `admin`, and `make argocd-password` prints the password.
+- ArgoCD: <https://ecommerce-homelab-argocd.projects.jovanovski.dev>. Log in with Keycloak, or as `admin` with the password from `make argocd-password`. `make argocd-ui` opens a tunnel to <http://localhost:8080>, which is plain HTTP on the homelab. The `argocd` CLI needs `--plaintext` through that tunnel.
 - Grafana: <https://ecommerce-homelab-grafana.projects.jovanovski.dev>. Log in with Keycloak, or as `admin` with the password from `GRAFANA_ADMIN_PASSWORD`.
 - Vault: run `make vault-ui`, then open <http://localhost:8200> (token `root`).
 
@@ -540,7 +556,7 @@ make lb                 # cloud-provider-kind (needs sudo)
 
 # ArgoCD
 make argocd-install     # install ArgoCD into the kind cluster
-make argocd-ui          # https://localhost:8080
+make argocd-ui          # http://localhost:8080 on the homelab, https on kind and aws-prod
 make argocd-password    # initial admin password
 make argocd-status      # application sync status
 
@@ -577,7 +593,7 @@ make diff               # rendered changes against origin/main (BASE=<ref> for a
 ## Planned
 
 - Keycloak on aws-prod, with its database on RDS.
-- Login through Keycloak for ArgoCD and Headlamp.
+- Login through Keycloak for Headlamp.
 - Terraform checks on the infra repo (`terraform fmt`, `validate` and `plan`).
 - A `promote` workflow that opens a PR to move an image tag to the aws-prod overlay.
 - CodePipeline for the Terraform deploy and destroy, and for the start and teardown scripts.

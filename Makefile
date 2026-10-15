@@ -153,8 +153,8 @@ argocd-password: ## Print the initial ArgoCD admin password
 	@echo ""
 
 .PHONY: argocd-ui
-argocd-ui: ## Port-forward ArgoCD UI to localhost:8080
-	@echo "$(CYAN)ArgoCD UI → https://localhost:8080$(NC)"
+argocd-ui: ## Port-forward ArgoCD UI to localhost:8080 (http on the homelab, https elsewhere)
+	@echo "$(CYAN)ArgoCD UI → http://localhost:8080 on the homelab, https://localhost:8080 on kind and aws-prod$(NC)"
 	@kubectl port-forward svc/argocd-server -n $(ARGOCD_NS) 8080:443
 
 .PHONY: argocd-status
