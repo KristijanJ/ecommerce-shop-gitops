@@ -184,8 +184,8 @@ vault-ui: ## Port-forward Vault UI to localhost:8200 (token: root)
 # ------------------------------------------------------------------------------
 
 .PHONY: grafana-ui
-grafana-ui: ## Port-forward Grafana UI to localhost:3000 (admin/admin)
-	@echo "$(CYAN)Grafana → http://localhost:3000 (admin/admin)$(NC)"
+grafana-ui: ## Port-forward Grafana UI to localhost:3000 (admin password is in Vault on the homelab)
+	@echo "$(CYAN)Grafana → http://localhost:3000$(NC)"
 	@kubectl port-forward -n $(MONITORING_NS) svc/kube-prometheus-stack-grafana 3000:80
 
 .PHONY: prometheus-ui

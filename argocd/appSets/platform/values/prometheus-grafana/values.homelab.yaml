@@ -55,7 +55,21 @@ grafana:
     limits:
       memory: 512Mi
       cpu: 500m
-  adminPassword: admin
+  # The admin login comes from Vault (secret/grafana). The sidecars use the same Secret to call the reload endpoints.
+  admin:
+    existingSecret: grafana-admin
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: cert-manager-issuer
+    hosts:
+      - ecommerce-homelab-grafana.projects.jovanovski.dev
+    path: /
+    tls:
+      - secretName: grafana-tls
+        hosts:
+          - ecommerce-homelab-grafana.projects.jovanovski.dev
   additionalDataSources:
     - name: Loki
       type: loki
@@ -95,9 +109,9 @@ grafana:
         name: grafana-keycloak
         key: grafana_keycloak_client_secret
   grafana.ini:
-    # Must equal the Keycloak client's redirect URI base (the port-forward from `make grafana-ui`).
+    # Must equal the Keycloak client's root URL (see the realm file in the keycloak values).
     server:
-      root_url: http://localhost:3000
+      root_url: https://ecommerce-homelab-grafana.projects.jovanovski.dev
     auth.generic_oauth:
       enabled: true
       name: Keycloak-OAuth
@@ -178,6 +192,36 @@ extraManifests:
           remoteRef:
             key: grafana
             property: grafana_keycloak_client_secret
+            conversionStrategy: Default
+            decodingStrategy: None
+            metadataPolicy: None
+  - apiVersion: external-secrets.io/v1
+    kind: ExternalSecret
+    metadata:
+      name: grafana-admin
+      annotations:
+        argocd.argoproj.io/sync-wave: "-1"
+    spec:
+      refreshInterval: "15s"
+      secretStoreRef:
+        name: vault-secret-store
+        kind: ClusterSecretStore
+      target:
+        name: grafana-admin
+        creationPolicy: Owner
+        deletionPolicy: Retain
+      data:
+        - secretKey: admin-user
+          remoteRef:
+            key: grafana
+            property: admin_user
+            conversionStrategy: Default
+            decodingStrategy: None
+            metadataPolicy: None
+        - secretKey: admin-password
+          remoteRef:
+            key: grafana
+            property: admin_password
             conversionStrategy: Default
             decodingStrategy: None
             metadataPolicy: None
