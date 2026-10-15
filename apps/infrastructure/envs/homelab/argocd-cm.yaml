@@ -1,0 +1,20 @@
+# Only the keys this repo owns. The install adds other keys to argocd-cm (resource.exclusions and so on),
+# and those stay as they are. Prune=false keeps ArgoCD from deleting the whole ConfigMap if this file is removed.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-cm
+    app.kubernetes.io/part-of: argocd
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+data:
+  url: https://ecommerce-homelab-argocd.projects.jovanovski.dev
+  oidc.config: |
+    name: Keycloak
+    issuer: https://ecommerce-homelab-auth.projects.jovanovski.dev/realms/platform
+    clientID: argocd
+    clientSecret: $argocd-oidc:client-secret
+    requestedScopes: [openid, profile, email, groups]

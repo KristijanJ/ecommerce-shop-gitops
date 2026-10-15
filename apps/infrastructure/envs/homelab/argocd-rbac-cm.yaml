@@ -1,0 +1,17 @@
+# Maps the groups in the Keycloak token to ArgoCD roles. A signed-in user in neither group gets no access.
+# The local admin account does not depend on this file.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-rbac-cm
+    app.kubernetes.io/part-of: argocd
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+data:
+  policy.default: ""
+  policy.csv: |
+    g, cluster-admins, role:admin
+    g, viewers, role:readonly

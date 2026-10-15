@@ -1,0 +1,35 @@
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: argocd-server-transport
+  namespace: argocd
+spec:
+  insecureSkipVerify: true
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ecommerce-argocd-ingress
+  namespace: argocd
+  annotations:
+    cert-manager.io/cluster-issuer: cert-manager-issuer
+    traefik.ingress.kubernetes.io/service.serversscheme: https
+    traefik.ingress.kubernetes.io/service.serverstransport: argocd-argocd-server-transport@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - ecommerce-homelab-argocd.projects.jovanovski.dev
+      secretName: ecommerce-argocd-tls
+  rules:
+    - host: ecommerce-homelab-argocd.projects.jovanovski.dev
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  number: 443

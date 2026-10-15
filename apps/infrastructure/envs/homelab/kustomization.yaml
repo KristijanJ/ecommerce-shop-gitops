@@ -4,3 +4,7 @@ resources:
   - cluster-secret-store.yaml
   - cluster-cert-issuer.yaml
   - cert-iam-user-secret.yaml
+  - argocd-ingress.yaml
+  - argocd-oidc-secret.yaml
+  - argocd-cm.yaml
+  - argocd-rbac-cm.yaml
